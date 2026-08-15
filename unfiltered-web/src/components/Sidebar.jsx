@@ -8,8 +8,11 @@ import {
   BellRing,
   Settings,
   Bookmark,
+  LogOut,
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { useAuth } from '../context/AuthContext';
+import ConfirmModal from './ConfirmModal';
 
 const NAV_ITEMS = [
   { to: '/home', label: 'home', icon: Home },
@@ -22,9 +25,22 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar() {
+  const { logout, user } = useAuth();
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('uf_sidebar_collapsed') === '1'
   );
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutConfirm(false);
+    }
+  };
 
   const toggle = () => {
     setCollapsed((prev) => {
@@ -120,8 +136,48 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* Logout */}
+      <div className={`px-3 pb-2 shrink-0 ${collapsed ? 'flex justify-center' : ''}`}>
+        <button
+          type="button"
+          onClick={() => setShowLogoutConfirm(true)}
+          title={collapsed ? 'log out' : undefined}
+          aria-label="log out"
+          className={`flex items-center gap-3.5 h-11 rounded-2xl transition-all duration-200 opacity-85 hover:opacity-100 hover:bg-white/5 cursor-pointer w-full ${
+            collapsed ? 'justify-center px-0' : 'pl-3.5 pr-4'
+          }`}
+        >
+          <LogOut
+            size={19}
+            strokeWidth={2}
+            className="shrink-0"
+            style={{ color: 'var(--sidebar-ink-soft)' }}
+          />
+          {!collapsed && (
+            <span
+              className="text-[13.5px] font-medium truncate lowercase"
+              style={{ color: 'var(--sidebar-ink)' }}
+            >
+              log out
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Bottom Padding for Clean Finish */}
       <div className="h-4 shrink-0" />
+
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="log out of unfiltered?"
+        message={`see you soon${user?.name ? `, ${user.name.split(' ')[0]}` : ''}! you'll need to sign back in to access your entries.`}
+        confirmText={loggingOut ? 'logging out...' : 'log out'}
+        cancelText="cancel"
+        confirmVariant="danger"
+        icon="logout"
+        onConfirm={handleLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </aside>
   );
 }
