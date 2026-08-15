@@ -2,6 +2,7 @@
   "expo": {
     "name": "unfiltered-mobile",
     "slug": "unfiltered-mobile",
+    "scheme": "unfiltered",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,10 +21,16 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.bandong.unfiltered"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8d2826ec-06ba-4869-aa35-8a87cd622dcc"
+      }
     }
   }
 }
