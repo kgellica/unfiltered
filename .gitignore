@@ -1,0 +1,15 @@
+# Dependencies
+**/node_modules/
+**/vendor/
+
+# Environment variables
+**/.env
+
+# Build outputs & caches
+**/dist/
+**/build/
+**/.expo/
+
+# OS files
+.DS_Store
+Thumbs.db
