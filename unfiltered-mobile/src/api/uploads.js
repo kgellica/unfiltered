@@ -17,9 +17,28 @@ export async function uploadFile(localUri, type) {
   form.append('type', type);
   form.append('file', { uri: localUri, name: filename || `upload.${ext}`, type: mime });
 
-  const res = await client.post('/uploads', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  try {
+    const res = await client.post('/uploads', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.url;
+  } catch (err) {
+    // Surface the real server message (validation error, 500, etc.) instead
+    // of a bare network error, so callers can show something actionable.
+    const serverMessage = err?.response?.data?.message;
+    throw new Error(serverMessage || 'Upload failed. Please check your connection and try again.');
+  }
+}
 
-  return res.data.url;
+// Uploads a picked photo and saves it as the user's avatar in one step.
+// Returns the updated user object from the API.
+export async function uploadAvatar(localUri) {
+  const remoteUrl = await uploadFile(localUri, 'photo');
+  try {
+    const res = await client.patch('/user/profile', { avatar_url: remoteUrl });
+    return res.data.user;
+  } catch (err) {
+    const serverMessage = err?.response?.data?.message;
+    throw new Error(serverMessage || 'Could not update your profile photo. Please try again.');
+  }
 }

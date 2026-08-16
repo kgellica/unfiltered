@@ -14,14 +14,16 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import PixelButton from '../components/PixelButton';
+import GoogleIcon from '../components/GoogleIcon';
+import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { colors, spacing } from '../theme/theme';
-import Icon from '@expo/vector-icons/FontAwesome';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 // Import logo from assets folder - going up two levels
 import Logo from '../../assets/logo.png';
 
 export default function LoginScreen({ navigation }) {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,11 @@ export default function LoginScreen({ navigation }) {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  const { signIn: signInWithGoogle, submitting: googleSubmitting } = useGoogleAuth({
+    onSuccess: (accessToken) => loginWithGoogle(accessToken),
+    onError: (e) => Alert.alert('Google Sign-In failed', e.message || 'Please try again.'),
+  });
 
   const onSubmit = async () => {
     if (!email || !password) {
@@ -64,8 +71,10 @@ export default function LoginScreen({ navigation }) {
 
         {/* Branding / Header Section */}
         <View style={styles.header}>
-          <Image source={Logo} style={styles.logoImage} />
-          <Text style={styles.appName}>UNFILTERED</Text>
+          <View style={styles.brandRow}>
+            <Image source={Logo} style={styles.logoImage} />
+            <Text style={styles.appName}>UNFILTERED</Text>
+          </View>
           <Text style={styles.tagline}>Your little space to remember every day</Text>
         </View>
 
@@ -125,15 +134,18 @@ export default function LoginScreen({ navigation }) {
                   onBlur={() => setPasswordFocused(false)}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <Icon 
-                    name={showPassword ? 'eye' : 'eye-slash'} 
-                    size={20} 
-                    color="#999"
-                  />
+                  {showPassword ? (
+                    <EyeOff size={20} color={colors.onSurfaceFaint} />
+                  ) : (
+                    <Eye size={20} color={colors.onSurfaceFaint} />
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -185,14 +197,11 @@ export default function LoginScreen({ navigation }) {
           <PixelButton
             title="Continue with Google"
             variant="secondary"
-            onPress={() =>
-              Alert.alert(
-                'Google Sign-In',
-                'Not wired up yet — needs Google OAuth client setup.'
-              )
-            }
+            onPress={signInWithGoogle}
+            loading={googleSubmitting}
             style={styles.googleBtn}
-            icon="google"
+            textStyle={styles.googleBtnText}
+            icon={<GoogleIcon size={18} />}
           />
         </View>
 
@@ -214,7 +223,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: '#F9F8FA',
+    backgroundColor: colors.background,
   },
   container: {
     flexGrow: 1,
@@ -227,41 +236,45 @@ const styles = StyleSheet.create({
     top: 40,
     left: 24,
     fontSize: 24,
-    color: '#9E9E9E',
+    color: colors.onSurfaceFaint,
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoImage: {
-    width: 180,
-    height: 180,
+    width: 60,
+    height: 52,
     resizeMode: 'contain',
-    marginBottom: -30,
+    marginRight: 10,
   },
   appName: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: colors.onBackground,
     letterSpacing: 2,
-    marginTop: -20,
   },
   tagline: {
     fontSize: 14,
-    color: '#666666',
+    color: colors.onSurfaceVariant,
     marginTop: 6,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
+    shadowColor: '#46302a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#F0EFF2',
+    borderColor: colors.borderSoft,
   },
   inputWrapper: {
     marginBottom: 4,
@@ -270,13 +283,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 60,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.borderSoft,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
   },
   inputContainerActive: {
-    borderColor: '#4A4E69',
+    borderColor: colors.accent,
     borderWidth: 2,
   },
   floatingLabel: {
@@ -284,7 +297,7 @@ const styles = StyleSheet.create({
     top: 18,
     left: 14,
     fontSize: 16,
-    color: '#999',
+    color: colors.onSurfaceFaint,
     backgroundColor: 'transparent',
     zIndex: 1,
   },
@@ -292,8 +305,8 @@ const styles = StyleSheet.create({
     top: -10,
     left: 12,
     fontSize: 12,
-    color: '#4A4E69',
-    backgroundColor: '#FFFFFF',
+    color: colors.accent,
+    backgroundColor: colors.surface,
     paddingHorizontal: 6,
     fontWeight: '600',
   },
@@ -303,7 +316,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: colors.onSurface,
     backgroundColor: 'transparent',
     textAlign: 'left',
   },
@@ -323,7 +336,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: colors.onSurface,
     backgroundColor: 'transparent',
     textAlign: 'left',
   },
@@ -346,44 +359,43 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderWidth: 2,
-    borderColor: '#CCCCCC',
-    borderRadius: 4,
+    borderColor: colors.borderStrong,
+    borderRadius: 6,
     marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   checkboxChecked: {
-    backgroundColor: '#4A4E69',
-    borderColor: '#4A4E69',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   checkmark: {
-    color: '#FFFFFF',
+    color: colors.accentInk,
     fontSize: 14,
     fontWeight: 'bold',
   },
   rememberMeText: {
     fontSize: 13,
-    color: '#555555',
+    color: colors.onSurfaceVariant,
   },
   forgotText: {
     fontSize: 13,
-    color: '#555555',
-    textDecorationLine: 'underline',
+    color: colors.accent,
+    fontWeight: '600',
   },
   loginBtn: {
-    backgroundColor: '#E8E5F8',
+    backgroundColor: colors.accent,
     borderRadius: 25,
-    height: 48,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 20,
-    borderWidth: 0,
   },
   loginBtnText: {
-    color: '#4A4E69',
+    color: colors.accentInk,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -393,22 +405,25 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: colors.borderSoft,
   },
   dividerText: {
     marginHorizontal: 12,
     fontSize: 11,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    color: '#888888',
+    color: colors.onSurfaceFaint,
   },
   googleBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 25,
-    height: 48,
+    height: 50,
     borderWidth: 1.5,
-    borderColor: '#1A1A1A',
+    borderColor: colors.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  googleBtnText: {
+    color: colors.onSurface,
   },
   footer: {
     flexDirection: 'row',
@@ -418,11 +433,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#666666',
+    color: colors.onSurfaceVariant,
   },
   footerLink: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#4B5563',
+    color: colors.accent,
   },
 });

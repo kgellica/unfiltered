@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { colors, radius, spacing, pixelShadow } from '../theme/theme';
+import { RefreshCw, Heart, Copy, Check, X, Sparkles } from 'lucide-react-native';
 
 const AFFIRMATION_PRESETS = [
   'i am worthy of peace, joy, and gentle days. 🌸',
@@ -16,7 +17,9 @@ const AFFIRMATION_PRESETS = [
 
 const FAV_KEY = 'uf_fav_affirmations';
 
-export default function AffirmationsScreen() {
+// Rendered as a centered modal card (not a full screen) — better HCI for a
+// lightweight, glanceable action reached from the "More" menu.
+export default function AffirmationsScreen({ visible, onClose }) {
   const [index, setIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [favorites, setFavorites] = useState([]);
@@ -52,66 +55,115 @@ export default function AffirmationsScreen() {
   };
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.headerTitle}>Daily Affirmations ✨</Text>
-      <Text style={styles.headerSub}>gentle words to nurture your mindset and bring warmth to your day.</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.quoteMark}>"</Text>
-        <Text style={styles.affirmationText}>{currentText}</Text>
-
-        <View style={styles.actionsRow}>
-          <Pressable style={styles.primaryBtn} onPress={nextAffirmation} accessibilityRole="button" accessibilityLabel="Show a new affirmation">
-            <Text style={styles.primaryBtnText}>↻ NEW</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.secondaryBtn, isFav && styles.secondaryBtnActive]}
-            onPress={() => toggleFavorite(currentText)}
-            accessibilityRole="button"
-            accessibilityLabel={isFav ? 'Remove from favorites' : 'Save to favorites'}
+    <Modal visible={!!visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <ScrollView
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={[styles.secondaryBtnText, isFav && styles.secondaryBtnTextActive]}>
-              {isFav ? '♥ SAVED' : '♡ SAVE'}
-            </Text>
-          </Pressable>
-
-          <Pressable style={styles.secondaryBtn} onPress={copyCurrent} accessibilityRole="button" accessibilityLabel="Copy affirmation text">
-            <Text style={styles.secondaryBtnText}>{copied ? '✓ COPIED' : '⧉ COPY'}</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {favorites.length > 0 && (
-        <View style={styles.favSection}>
-          <Text style={styles.favTitle}>your favorites ({favorites.length})</Text>
-          {favorites.map((fav, i) => (
-            <View key={i} style={styles.favCard}>
-              <Text style={styles.favText}>"{fav}"</Text>
-              <Pressable onPress={() => toggleFavorite(fav)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Remove favorite">
-                <Text style={styles.favRemove}>✕</Text>
+            <View style={styles.headerRow}>
+              <View style={styles.headerRowLeft}>
+                <Sparkles size={20} color={colors.accent} strokeWidth={2.2} />
+                <Text style={styles.headerTitle}>Daily Affirmations</Text>
+              </View>
+              <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
+                <X size={20} color={colors.onSurfaceVariant} strokeWidth={2.2} />
               </Pressable>
             </View>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+            <Text style={styles.headerSub}>gentle words to nurture your mindset and bring warmth to your day.</Text>
+
+            <View style={styles.card}>
+              <Text style={styles.quoteMark}>"</Text>
+              <Text style={styles.affirmationText}>{currentText}</Text>
+
+              <View style={styles.actionsRow}>
+                <Pressable style={styles.primaryBtn} onPress={nextAffirmation} accessibilityRole="button" accessibilityLabel="Show a new affirmation">
+                  <RefreshCw size={14} color={colors.accentInk} strokeWidth={2.4} />
+                  <Text style={styles.primaryBtnText}>NEW</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.secondaryBtn, isFav && styles.secondaryBtnActive]}
+                  onPress={() => toggleFavorite(currentText)}
+                  accessibilityRole="button"
+                  accessibilityLabel={isFav ? 'Remove from favorites' : 'Save to favorites'}
+                >
+                  <Heart
+                    size={14}
+                    color={isFav ? colors.accent : colors.onSurfaceVariant}
+                    fill={isFav ? colors.accent : 'none'}
+                    strokeWidth={2.2}
+                  />
+                  <Text style={[styles.secondaryBtnText, isFav && styles.secondaryBtnTextActive]}>
+                    {isFav ? 'SAVED' : 'SAVE'}
+                  </Text>
+                </Pressable>
+
+                <Pressable style={styles.secondaryBtn} onPress={copyCurrent} accessibilityRole="button" accessibilityLabel="Copy affirmation text">
+                  {copied ? (
+                    <Check size={14} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+                  ) : (
+                    <Copy size={14} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+                  )}
+                  <Text style={styles.secondaryBtnText}>{copied ? 'COPIED' : 'COPY'}</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {favorites.length > 0 && (
+              <View style={styles.favSection}>
+                <Text style={styles.favTitle}>your favorites ({favorites.length})</Text>
+                {favorites.map((fav, i) => (
+                  <View key={i} style={styles.favCard}>
+                    <Text style={styles.favText}>"{fav}"</Text>
+                    <Pressable onPress={() => toggleFavorite(fav)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Remove favorite">
+                      <X size={16} color={colors.onSurfaceFaint} strokeWidth={2.2} />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(50, 36, 30, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  sheet: {
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '82%',
+    backgroundColor: colors.background,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    ...pixelShadow,
+  },
   container: {
     paddingHorizontal: spacing.gutter,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingBottom: 40,
+    paddingTop: 20,
+    paddingBottom: 28,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  headerRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: {
-    fontSize: 22,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 19,
     fontWeight: '800',
     color: colors.onSurface,
-    marginBottom: 4,
   },
   headerSub: {
     fontSize: 13,
@@ -123,9 +175,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1.5,
     borderColor: colors.outlineVariant,
-    padding: 28,
+    padding: 24,
     alignItems: 'center',
-    ...pixelShadow,
   },
   quoteMark: {
     fontSize: 28,
@@ -134,12 +185,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   affirmationText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.onSurface,
     textAlign: 'center',
-    lineHeight: 26,
-    marginBottom: 22,
+    lineHeight: 24,
+    marginBottom: 20,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -148,6 +199,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: colors.primary,
     borderRadius: radius.full,
     paddingHorizontal: 16,
@@ -160,6 +214,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: colors.surfaceContainer,
     borderRadius: radius.full,
     paddingHorizontal: 14,
@@ -181,7 +238,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   favSection: {
-    marginTop: 28,
+    marginTop: 24,
   },
   favTitle: {
     fontSize: 14,

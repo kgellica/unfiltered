@@ -16,3 +16,5 @@ export const updateEntry = (id, payload) =>
   client.put(`/entries/${id}`, payload).then((r) => r.data.entry);
 
 export const deleteEntry = (id) => client.delete(`/entries/${id}`);
+
+export const getStats = () => client.get('/entries/stats').then((r) => r.data);

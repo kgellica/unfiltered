@@ -6,6 +6,10 @@ import { useAuth } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import NewEntryScreen from '../screens/NewEntryScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import UserProfileScreen from '../screens/UserProfileScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import ThemeAmbienceScreen from '../screens/ThemeAmbienceScreen';
 import MainTabs from './MainTabs';
 import { colors } from '../theme/theme';
 
@@ -20,6 +24,12 @@ function AuthStack() {
   );
 }
 
+const modalHeaderOptions = {
+  headerStyle: { backgroundColor: colors.surface },
+  headerTitleStyle: { color: colors.onSurface, fontWeight: '700' },
+  headerTintColor: colors.accent,
+};
+
 function AppStack() {
   return (
     <Stack.Navigator>
@@ -27,8 +37,13 @@ function AppStack() {
       <Stack.Screen
         name="NewEntry"
         component={NewEntryScreen}
-        options={{ title: 'Journal Entry', headerStyle: { backgroundColor: colors.surface } }}
+        options={{ title: 'Journal Entry', ...modalHeaderOptions }}
       />
+      {/* Reached from the Profile tab's menu */}
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile', ...modalHeaderOptions }} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'User Profile', ...modalHeaderOptions }} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password', ...modalHeaderOptions }} />
+      <Stack.Screen name="ThemeAmbience" component={ThemeAmbienceScreen} options={{ title: 'Theme & Ambience', ...modalHeaderOptions }} />
     </Stack.Navigator>
   );
 }
@@ -39,7 +54,7 @@ export default function AppNavigator() {
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }

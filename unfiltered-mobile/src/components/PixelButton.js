@@ -1,26 +1,43 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { colors, radius, pixelShadow } from '../theme/theme';
+import { Pressable, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { colors, radius, cardShadow } from '../theme/theme';
 
-export default function PixelButton({ title, onPress, variant = 'primary', loading, disabled, style }) {
+export default function PixelButton({
+  title,
+  onPress,
+  variant = 'primary',
+  loading,
+  disabled,
+  style,
+  textStyle,
+  icon, // optional React node (e.g. a lucide icon or <GoogleIcon />) rendered before the label
+}) {
   const isPrimary = variant === 'primary';
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      hitSlop={6}
       style={({ pressed }) => [
         styles.base,
         isPrimary ? styles.primary : styles.secondary,
-        pixelShadow,
+        cardShadow,
         pressed && styles.pressed,
         (disabled || loading) && styles.disabled,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? colors.onPrimary : colors.primary} />
+        <ActivityIndicator color={isPrimary ? colors.accentInk : colors.accent} />
       ) : (
-        <Text style={[styles.text, isPrimary ? styles.textPrimary : styles.textSecondary]}>{title}</Text>
+        <View style={styles.content}>
+          {icon}
+          <Text style={[styles.text, isPrimary ? styles.textPrimary : styles.textSecondary, textStyle]}>
+            {title}
+          </Text>
+        </View>
       )}
     </Pressable>
   );
@@ -28,33 +45,39 @@ export default function PixelButton({ title, onPress, variant = 'primary', loadi
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: 14,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
   primary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.onSurface,
+    backgroundColor: colors.accent,
   },
   secondary: {
     backgroundColor: colors.surface,
-    borderColor: colors.outline,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
   },
   pressed: {
-    transform: [{ translateX: 2 }, { translateY: 2 }],
-    shadowOpacity: 0,
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   disabled: {
     opacity: 0.5,
   },
   text: {
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 15,
   },
   textPrimary: {
-    color: colors.onPrimary,
+    color: colors.accentInk,
   },
   textSecondary: {
     color: colors.onSurface,

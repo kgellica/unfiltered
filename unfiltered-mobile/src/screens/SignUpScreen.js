@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import PixelButton from '../components/PixelButton';
+import GoogleIcon from '../components/GoogleIcon';
+import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { colors, spacing } from '../theme/theme';
-import Icon from '@expo/vector-icons/FontAwesome';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 export default function SignUpScreen({ navigation }) {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +31,11 @@ export default function SignUpScreen({ navigation }) {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmFocused, setConfirmFocused] = useState(false);
+
+  const { signIn: signInWithGoogle, submitting: googleSubmitting } = useGoogleAuth({
+    onSuccess: (accessToken) => loginWithGoogle(accessToken),
+    onError: (e) => Alert.alert('Google Sign-In failed', e.message || 'Please try again.'),
+  });
 
   const onSubmit = async () => {
     if (!name || !email || !password || !confirm) {
@@ -143,15 +150,18 @@ export default function SignUpScreen({ navigation }) {
                 onBlur={() => setPasswordFocused(false)}
                 secureTextEntry={!showPassword}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.eyeIcon}
                 onPress={() => setShowPassword(!showPassword)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
               >
-                <Icon 
-                  name={showPassword ? 'eye' : 'eye-slash'} 
-                  size={20} 
-                  color="#999"
-                />
+                {showPassword ? (
+                  <EyeOff size={20} color={colors.onSurfaceFaint} />
+                ) : (
+                  <Eye size={20} color={colors.onSurfaceFaint} />
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -182,15 +192,18 @@ export default function SignUpScreen({ navigation }) {
                 onBlur={() => setConfirmFocused(false)}
                 secureTextEntry={!showConfirmPassword}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.eyeIcon}
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'}
               >
-                <Icon 
-                  name={showConfirmPassword ? 'eye' : 'eye-slash'} 
-                  size={20} 
-                  color="#999"
-                />
+                {showConfirmPassword ? (
+                  <EyeOff size={20} color={colors.onSurfaceFaint} />
+                ) : (
+                  <Eye size={20} color={colors.onSurfaceFaint} />
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -203,11 +216,19 @@ export default function SignUpScreen({ navigation }) {
           style={{ marginTop: 12 }} 
         />
 
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
         <PixelButton
           title="Continue with Google"
           variant="secondary"
-          onPress={() => Alert.alert('Google Sign-In', 'Not wired up yet — needs Google OAuth client setup.')}
-          style={{ marginTop: 12 }}
+          onPress={signInWithGoogle}
+          loading={googleSubmitting}
+          style={styles.googleBtn}
+          icon={<GoogleIcon size={18} />}
         />
 
         <View style={styles.footer}>
@@ -224,7 +245,7 @@ export default function SignUpScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: { 
     flex: 1, 
-    backgroundColor: '#F9F8FA',
+    backgroundColor: colors.background,
   },
   container: { 
     flexGrow: 1, 
@@ -235,13 +256,13 @@ const styles = StyleSheet.create({
   title: { 
     fontSize: 28, 
     fontWeight: '700', 
-    color: '#1A1A1A', 
+    color: colors.onBackground,
     marginBottom: 4,
     textAlign: 'center',
   },
   subtitle: { 
     fontSize: 14, 
-    color: '#666666', 
+    color: colors.onSurfaceVariant,
     marginBottom: 32,
     textAlign: 'center',
   },
@@ -252,13 +273,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 60,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.borderSoft,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
   },
   inputContainerActive: {
-    borderColor: '#4A4E69',
+    borderColor: colors.accent,
     borderWidth: 2,
   },
   floatingLabel: {
@@ -266,7 +287,7 @@ const styles = StyleSheet.create({
     top: 18,
     left: 14,
     fontSize: 16,
-    color: '#999',
+    color: colors.onSurfaceFaint,
     backgroundColor: 'transparent',
     zIndex: 1,
   },
@@ -274,8 +295,8 @@ const styles = StyleSheet.create({
     top: -10,
     left: 12,
     fontSize: 12,
-    color: '#4A4E69',
-    backgroundColor: '#FFFFFF',
+    color: colors.accent,
+    backgroundColor: colors.surface,
     paddingHorizontal: 6,
     fontWeight: '600',
   },
@@ -285,7 +306,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: colors.onSurface,
     backgroundColor: 'transparent',
     textAlign: 'left',
   },
@@ -305,7 +326,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: colors.onSurface,
     backgroundColor: 'transparent',
     textAlign: 'left',
   },
@@ -313,17 +334,42 @@ const styles = StyleSheet.create({
     padding: 10,
     marginRight: 8,
   },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.borderSoft,
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 11,
+    color: colors.onSurfaceFaint,
+  },
+  googleBtn: {
+    backgroundColor: colors.surface,
+    borderRadius: 25,
+    height: 50,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   footer: { 
     flexDirection: 'row', 
     justifyContent: 'center', 
     marginTop: 24 
   },
   footerText: { 
-    color: '#666666',
+    color: colors.onSurfaceVariant,
     fontSize: 13,
   },
   footerLink: { 
-    color: '#4A4E69', 
+    color: colors.accent, 
     fontWeight: '700',
     fontSize: 13,
   },

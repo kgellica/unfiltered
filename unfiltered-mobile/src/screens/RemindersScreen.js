@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Platform } from 'react-native';
 import { colors, radius, spacing, pixelShadow } from '../theme/theme';
+import { ChevronLeft, ChevronRight, Bell, Check, Sunrise, Moon, Sparkles } from 'lucide-react-native';
 
 const PROMPT_IDEAS = [
   { prompt: 'what made you smile today, even for a split second? 🌸', tag: 'gratitude' },
@@ -23,11 +24,11 @@ function TimeStepper({ value, onChange, disabled }) {
   return (
     <View style={[stepperStyles.row, disabled && stepperStyles.disabled]}>
       <Pressable onPress={() => shift(-30)} disabled={disabled} hitSlop={8} accessibilityRole="button" accessibilityLabel="Earlier">
-        <Text style={stepperStyles.arrow}>‹</Text>
+        <ChevronLeft size={18} color={colors.onSurfaceVariant} strokeWidth={2.2} />
       </Pressable>
       <Text style={stepperStyles.time}>{value}</Text>
       <Pressable onPress={() => shift(30)} disabled={disabled} hitSlop={8} accessibilityRole="button" accessibilityLabel="Later">
-        <Text style={stepperStyles.arrow}>›</Text>
+        <ChevronRight size={18} color={colors.onSurfaceVariant} strokeWidth={2.2} />
       </Pressable>
     </View>
   );
@@ -47,18 +48,29 @@ export default function RemindersScreen() {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.headerTitle}>Gentle Reminders 🔔</Text>
+      <View style={styles.headerRow}>
+        <Bell size={20} color={colors.accent} strokeWidth={2.2} />
+        <Text style={styles.headerTitle}>Gentle Reminders</Text>
+      </View>
       <Text style={styles.headerSub}>keep your streak glowing with gentle nudges and inspiring questions.</Text>
 
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <Text style={styles.cardHeaderTitle}>daily journaling schedule</Text>
-          {savedNotice && <Text style={styles.savedBadge}>✓ saved</Text>}
+          {savedNotice && (
+            <View style={styles.savedBadgeRow}>
+              <Check size={12} color={colors.tertiary} strokeWidth={2.6} />
+              <Text style={styles.savedBadge}>saved</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.scheduleRow}>
           <View style={styles.scheduleTitleRow}>
-            <Text style={styles.scheduleLabel}>☀️ morning intention</Text>
+            <View style={styles.scheduleLabelRow}>
+              <Sunrise size={15} color={colors.onSurfaceVariant} strokeWidth={2.1} />
+              <Text style={styles.scheduleLabel}>morning intention</Text>
+            </View>
             <Switch
               value={morningEnabled}
               onValueChange={setMorningEnabled}
@@ -73,7 +85,10 @@ export default function RemindersScreen() {
 
         <View style={styles.scheduleRow}>
           <View style={styles.scheduleTitleRow}>
-            <Text style={styles.scheduleLabel}>🌙 evening unwind</Text>
+            <View style={styles.scheduleLabelRow}>
+              <Moon size={15} color={colors.onSurfaceVariant} strokeWidth={2.1} />
+              <Text style={styles.scheduleLabel}>evening unwind</Text>
+            </View>
             <Switch
               value={eveningEnabled}
               onValueChange={setEveningEnabled}
@@ -91,7 +106,10 @@ export default function RemindersScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.sectionTitle}>daily prompt inspiration ✨</Text>
+      <View style={styles.sectionTitleRow}>
+        <Sparkles size={16} color={colors.accent} strokeWidth={2.2} />
+        <Text style={styles.sectionTitle}>daily prompt inspiration</Text>
+      </View>
       {PROMPT_IDEAS.map((item, idx) => (
         <View key={idx} style={styles.promptCard}>
           <Text style={styles.promptText}>"{item.prompt}"</Text>
@@ -134,12 +152,17 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingBottom: 40,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   headerTitle: {
     fontSize: 22,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontWeight: '800',
     color: colors.onSurface,
-    marginBottom: 4,
   },
   headerSub: {
     fontSize: 13,
@@ -165,10 +188,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.onSurface,
   },
+  savedBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   savedBadge: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#059669',
+    color: colors.tertiary,
   },
   scheduleRow: {
     backgroundColor: colors.surfaceContainerLow,
@@ -182,6 +210,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  scheduleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   scheduleLabel: {
     fontSize: 13,
@@ -205,12 +238,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.5,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 28,
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: colors.onSurface,
-    marginTop: 28,
-    marginBottom: 12,
   },
   promptCard: {
     backgroundColor: colors.surface,

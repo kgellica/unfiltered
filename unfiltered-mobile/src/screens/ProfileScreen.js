@@ -1,232 +1,111 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  Pressable,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Platform,
-  Modal,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { Pencil, User as UserIcon, Lock, Palette, ChevronRight, LogOut, X } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
-import client from '../api/client';
-import { colors, spacing } from '../theme/theme';
+import { colors, radius, spacing, cardShadow } from '../theme/theme';
+
+// Profile hub — reached from the bottom tab bar. Kept deliberately minimal:
+// identity up top, four settings destinations, then log out. Entry stats
+// (total entries, streak, tags used) and data-management items
+// (export/privacy) live on the Dashboard/Journal now, not here.
+const MENU_ITEMS = [
+  { key: 'EditProfile', label: 'Edit Profile', hint: 'Name & profile photo', Icon: Pencil },
+  { key: 'UserProfile', label: 'User Profile', hint: 'Your account details', Icon: UserIcon },
+  { key: 'ChangePassword', label: 'Change Password', hint: 'Update your login password', Icon: Lock },
+  { key: 'ThemeAmbience', label: 'Theme & Ambience', hint: 'Color mode & accent', Icon: Palette },
+];
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
-  const [profileData, setProfileData] = useState({
-    name: user?.name || 'Fatima',
-    email: user?.email || 'fatima.dreamer@pixeljournal.app',
-    totalEntries: 142,
-    streakDays: 12,
-    memories: 45,
-    avatarUrl: 'https://i.pravatar.cc/300?img=47',
-  });
-  const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    client
-      .get('/user/profile')
-      .then((res) => {
-        if (isMounted && res.data) {
-          setProfileData((prev) => ({ ...prev, ...res.data }));
-        }
-      })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const handleLogoutConfirm = async () => {
     setLoggingOut(true);
     try {
       await logout();
     } catch (e) {
-      Alert.alert('Error', 'Failed to log out. Please try again.');
       setLoggingOut(false);
       setShowLogoutModal(false);
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {/* Navigation Header */}
-      <View style={styles.headerBar}>
-        <Pressable
-          hitSlop={12}
-          onPress={() => navigation.navigate('AccountSettings')}
-        >
-          <Text style={styles.headerIcon}>👤</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <Pressable hitSlop={12} onPress={() => navigation.navigate('Settings')}>
-          <Text style={styles.headerIcon}>⚙️</Text>
-        </Pressable>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* User Identity Section */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Identity */}
         <View style={styles.profileSection}>
-          <View style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: profileData.avatarUrl }}
-              style={styles.avatarImage}
-            />
-            <View style={styles.badgeIcon}>
-              <Text style={styles.badgeStar}>★</Text>
+          <TouchableOpacity
+            style={styles.avatarWrapper}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('EditProfile')}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile photo and details"
+          >
+            {user?.avatar_url ? (
+              <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarImage, styles.avatarFallback]}>
+                <Text style={styles.avatarInitial}>{(user?.name || '?').charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <Pencil size={13} color="#fff" strokeWidth={2.4} />
             </View>
-          </View>
-          <Text style={styles.userName}>{profileData.name}</Text>
-          <Text style={styles.userEmail}>{profileData.email}</Text>
+          </TouchableOpacity>
+          <Text style={styles.userName}>{user?.name || 'Your name'}</Text>
         </View>
 
-        {/* Hero Metric: Total Entries */}
-        <View style={styles.totalEntriesCard}>
-          <Text style={styles.totalEntriesValue}>
-            {profileData.totalEntries}
-          </Text>
-          <Text style={styles.metricLabel}>TOTAL ENTRIES</Text>
-        </View>
-
-        {/* Secondary Metrics Grid: Streak & Memories */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>🔥</Text>
-            <Text style={styles.statValue}>{profileData.streakDays} days</Text>
-            <Text style={styles.metricLabel}>STREAK</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>✨</Text>
-            <Text style={styles.statValue}>{profileData.memories}</Text>
-            <Text style={styles.metricLabel}>MEMORIES</Text>
-          </View>
-        </View>
-
-        {/* Menu Actions List */}
+        {/* Settings box */}
         <View style={styles.menuGroup}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Themes')}
-          >
-            <View style={[styles.menuIconContainer, { backgroundColor: '#EDE7F6' }]}>
-              <Text style={styles.menuEmoji}>🎨</Text>
-            </View>
-            <Text style={styles.menuText}>Journal Themes</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Notifications')}
-          >
-            <View style={[styles.menuIconContainer, { backgroundColor: '#E8F5E9' }]}>
-              <Text style={styles.menuEmoji}>🔔</Text>
-            </View>
-            <Text style={styles.menuText}>Notifications</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('ExportData')}
-          >
-            <View style={[styles.menuIconContainer, { backgroundColor: '#FFEBEE' }]}>
-              <Text style={styles.menuEmoji}>📥</Text>
-            </View>
-            <Text style={styles.menuText}>Export Data</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Privacy')}
-          >
-            <View style={[styles.menuIconContainer, { backgroundColor: '#ECEFF1' }]}>
-              <Text style={styles.menuEmoji}>🔒</Text>
-            </View>
-            <Text style={styles.menuText}>Privacy</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          {MENU_ITEMS.map(({ key, label, hint, Icon }, i) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.menuItem, i !== MENU_ITEMS.length - 1 && styles.menuItemBorder]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate(key)}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+            >
+              <View style={styles.menuIconContainer}>
+                <Icon size={18} color={colors.accent} strokeWidth={2.2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.menuText}>{label}</Text>
+                <Text style={styles.menuHint}>{hint}</Text>
+              </View>
+              <ChevronRight size={20} color={colors.onSurfaceFaint} />
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Log Out Action */}
+        {/* Log out */}
         <TouchableOpacity
           style={styles.logoutButton}
           activeOpacity={0.8}
           onPress={() => setShowLogoutModal(true)}
         >
-          <Text style={styles.logoutText}>[→ LOG OUT</Text>
+          <LogOut size={16} color={colors.error} strokeWidth={2.3} />
+          <Text style={styles.logoutText}>Log out</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Custom Logout Confirmation Modal */}
-      <Modal
-        visible={showLogoutModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLogoutModal(false)}
-      >
+      <Modal visible={showLogoutModal} transparent animationType="fade" onRequestClose={() => setShowLogoutModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            {/* Top Star Accent */}
-            <Text style={styles.modalStar}>★</Text>
-
-            {/* Logout Icon Circle */}
             <View style={styles.logoutIconBadge}>
-              <Text style={styles.logoutIconSymbol}>⍈</Text>
+              <LogOut size={24} color={colors.error} strokeWidth={2.2} />
             </View>
-
-            {/* Content Text */}
             <Text style={styles.modalTitle}>Log out of UNFILTERED?</Text>
             <Text style={styles.modalDescription}>
               Are you sure you want to log out? You'll need to sign back in to access your entries.
             </Text>
-
-            {/* Action Buttons */}
-            <TouchableOpacity
-              style={styles.modalConfirmBtn}
-              activeOpacity={0.85}
-              onPress={handleLogoutConfirm}
-              disabled={loggingOut}
-            >
-              {loggingOut ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.modalConfirmBtnText}>[→ LOG OUT</Text>
-              )}
+            <TouchableOpacity style={styles.modalConfirmBtn} activeOpacity={0.85} onPress={handleLogoutConfirm} disabled={loggingOut}>
+              {loggingOut ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.modalConfirmBtnText}>Log out</Text>}
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCancelBtn}
-              activeOpacity={0.85}
-              onPress={() => setShowLogoutModal(false)}
-              disabled={loggingOut}
-            >
-              <Text style={styles.modalCancelBtnText}>✕ CANCEL</Text>
+            <TouchableOpacity style={styles.modalCancelBtn} activeOpacity={0.85} onPress={() => setShowLogoutModal(false)} disabled={loggingOut}>
+              <X size={14} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+              <Text style={styles.modalCancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -236,239 +115,93 @@ export default function ProfileScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAF9F6',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '700',
-    color: '#2D3748',
-  },
-  headerIcon: {
-    fontSize: 20,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  profileSection: {
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  avatarWrapper: {
-    position: 'relative',
-    marginBottom: 12,
-  },
-  avatarImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#E2E8F0',
-  },
-  badgeIcon: {
+  container: { flex: 1, backgroundColor: colors.background },
+  scrollContent: { paddingHorizontal: spacing.gutter, paddingTop: 28, paddingBottom: 48 },
+  profileSection: { alignItems: 'center', marginBottom: 32 },
+  avatarWrapper: { position: 'relative', marginBottom: 14 },
+  avatarImage: { width: 104, height: 104, borderRadius: 52, backgroundColor: colors.surfaceMuted },
+  avatarFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft },
+  avatarInitial: { fontSize: 38, fontWeight: '800', color: colors.accent },
+  avatarEditBadge: {
     position: 'absolute',
     bottom: 2,
     right: 2,
-    backgroundColor: '#5A4A42',
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FAF9F6',
+    borderColor: colors.surface,
   },
-  badgeStar: {
-    color: '#FFD700',
-    fontSize: 12,
-  },
-  userName: {
-    fontSize: 22,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    color: '#1A202C',
-  },
-  userEmail: {
-    fontSize: 12,
-    color: '#718096',
-    marginTop: 4,
-  },
-  totalEntriesCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  totalEntriesValue: {
-    fontSize: 28,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    color: '#2D3748',
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '700',
-    color: '#A0AEC0',
-    marginTop: 4,
-    letterSpacing: 0.8,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 0.485,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  statEmoji: {
-    fontSize: 18,
-    marginBottom: 6,
-  },
-  statValue: {
-    fontSize: 18,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    color: '#2D3748',
-  },
+  userName: { fontSize: 21, fontWeight: '800', color: colors.onBackground },
+
   menuGroup: {
-    marginBottom: 24,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    marginBottom: 28,
+    ...cardShadow,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    padding: 16,
+    minHeight: 64,
   },
+  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  menuEmoji: {
-    fontSize: 18,
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2D3748',
-  },
-  chevron: {
-    fontSize: 20,
-    color: '#CBD5E0',
-    fontWeight: '600',
-  },
-  logoutButton: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 25,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  logoutText: {
-    color: '#DC2626',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.5,
-  },
+  menuText: { fontSize: 15.5, fontWeight: '700', color: colors.onSurface },
+  menuHint: { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2 },
 
-  /* Modal Custom UI Styling */
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.errorContainer,
+    borderRadius: radius.lg,
+    height: 52,
+  },
+  logoutText: { color: colors.error, fontWeight: '800', fontSize: 14.5 },
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    backgroundColor: 'rgba(50, 36, 30, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
   },
   modalCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalStar: {
-    position: 'absolute',
-    top: 16,
-    right: 18,
-    fontSize: 16,
-    color: '#A0AEC0',
+    ...cardShadow,
   },
   logoutIconBadge: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.errorContainer,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
     marginBottom: 16,
   },
-  logoutIconSymbol: {
-    fontSize: 24,
-    color: '#DC2626',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    color: '#1A202C',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
+  modalTitle: { fontSize: 19, fontWeight: '800', color: colors.onBackground, textAlign: 'center', marginBottom: 10 },
   modalDescription: {
     fontSize: 13,
-    color: '#718096',
+    color: colors.onSurfaceVariant,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
@@ -477,34 +210,24 @@ const styles = StyleSheet.create({
   modalConfirmBtn: {
     width: '100%',
     height: 48,
-    backgroundColor: '#B91C1C',
+    backgroundColor: colors.error,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
   },
-  modalConfirmBtnText: {
-    color: '#FFFFFF',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.5,
-  },
+  modalConfirmBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
   modalCancelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     width: '100%',
     height: 48,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: colors.borderStrong,
   },
-  modalCancelBtnText: {
-    color: '#374151',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.5,
-  },
+  modalCancelBtnText: { color: colors.onSurfaceVariant, fontWeight: '800', fontSize: 14 },
 });

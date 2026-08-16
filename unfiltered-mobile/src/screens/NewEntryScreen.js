@@ -8,7 +8,22 @@ import { uploadFile } from '../api/uploads';
 import PixelButton from '../components/PixelButton';
 import { colors, radius, spacing } from '../theme/theme';
 
-const STICKERS = ['⭐', '❤️', '🌸', '☀️', '🌙', '🍜', '🐱', '☁️'];
+// Same 5 moods as unfiltered-web (see src/lib/color.js MOOD_META) so
+// entries created on mobile line up with the web app.
+const MOOD_META = {
+  great: { label: 'great', emoji: '😄', color: colors.moodGreat, text: 'feeling amazing ✨' },
+  good: { label: 'good', emoji: '🌸', color: colors.moodGood, text: 'feeling happy 🌸' },
+  okay: { label: 'okay', emoji: '☁️', color: colors.moodOkay, text: 'feeling okay ☁️' },
+  low: { label: 'low', emoji: '🌧️', color: colors.moodLow, text: 'feeling a bit low 🌧️' },
+  sad: { label: 'sad', emoji: '🧸', color: colors.moodSad, text: 'feeling down 🧸' },
+};
+const MOOD_ORDER = ['great', 'good', 'okay', 'low', 'sad'];
+
+// Ready-to-use tags so entries can be tagged immediately without typing.
+const SUGGESTED_TAGS = [
+  'grateful', 'reflection', 'family', 'friends', 'work',
+  'school', 'health', 'travel', 'goals', 'rest', 'love', 'growth',
+];
 
 export default function NewEntryScreen({ route, navigation }) {
   const entryId = route.params?.entryId;
@@ -21,7 +36,8 @@ export default function NewEntryScreen({ route, navigation }) {
   const [photoUri, setPhotoUri] = useState(null);
   const [recording, setRecording] = useState(null);
   const [voiceUri, setVoiceUri] = useState(null);
-  const [selectedStickers, setSelectedStickers] = useState([]);
+  const [mood, setMood] = useState('good');
+  const [selectedTags, setSelectedTags] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
 
@@ -33,7 +49,8 @@ export default function NewEntryScreen({ route, navigation }) {
         setContent(e.content || '');
         setPhotoUri(e.photo_path || null);
         setVoiceUri(e.voice_path || null);
-        setSelectedStickers(e.stickers || []);
+        setMood(e.mood && MOOD_META[e.mood] ? e.mood : 'good');
+        setSelectedTags((e.tags || []).map((t) => (typeof t === 'string' ? t : t.name)));
         setLoading(false);
       }).catch(() => setLoading(false));
     }
@@ -49,8 +66,8 @@ export default function NewEntryScreen({ route, navigation }) {
     if (!result.canceled) setPhotoUri(result.assets[0].uri);
   };
 
-  const toggleSticker = (s) => {
-    setSelectedStickers((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  const toggleTag = (t) => {
+    setSelectedTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
   };
 
   const startRecording = async () => {
@@ -97,7 +114,8 @@ export default function NewEntryScreen({ route, navigation }) {
         content,
         photo_path: uploadedPhoto,
         voice_path: uploadedVoice,
-        stickers: selectedStickers,
+        mood,
+        tags: selectedTags,
       };
 
       if (isEditing) {
@@ -156,6 +174,26 @@ export default function NewEntryScreen({ route, navigation }) {
           textAlignVertical="top"
         />
 
+        <Text style={styles.sectionLabel}>MOOD</Text>
+        <View style={styles.moodRow}>
+          {MOOD_ORDER.map((key) => {
+            const m = MOOD_META[key];
+            const active = mood === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => setMood(key)}
+                style={[styles.moodChip, { backgroundColor: active ? m.color : colors.surfaceContainerLow, borderColor: active ? m.color : colors.outlineVariant }]}
+                accessibilityRole="button"
+                accessibilityLabel={`Mood: ${m.label}`}
+              >
+                <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                <Text style={[styles.moodLabel, active && styles.moodLabelActive]}>{m.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Text style={styles.sectionLabel}>PHOTO</Text>
         {photoUri ? (
           <View>
@@ -182,17 +220,22 @@ export default function NewEntryScreen({ route, navigation }) {
           )}
         </View>
 
-        <Text style={styles.sectionLabel}>STICKERS</Text>
-        <View style={styles.stickerRow}>
-          {STICKERS.map((s) => (
-            <Pressable
-              key={s}
-              onPress={() => toggleSticker(s)}
-              style={[styles.sticker, selectedStickers.includes(s) && styles.stickerSelected]}
-            >
-              <Text style={styles.stickerEmoji}>{s}</Text>
-            </Pressable>
-          ))}
+        <Text style={styles.sectionLabel}>TAGS</Text>
+        <View style={styles.tagRow}>
+          {SUGGESTED_TAGS.map((t) => {
+            const active = selectedTags.includes(t);
+            return (
+              <Pressable
+                key={t}
+                onPress={() => toggleTag(t)}
+                style={[styles.tagChip, active && styles.tagChipSelected]}
+                accessibilityRole="button"
+                accessibilityLabel={`Tag: ${t}`}
+              >
+                <Text style={[styles.tagChipText, active && styles.tagChipTextSelected]}>#{t}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <PixelButton title={isEditing ? 'Save Changes' : 'Save Entry'} onPress={onSave} loading={saving} style={{ marginTop: 24 }} />
@@ -225,12 +268,33 @@ const styles = StyleSheet.create({
   photoPreview: { width: '100%', height: 180, borderRadius: radius.md, marginBottom: 6 },
   removeLink: { color: colors.error, fontWeight: '600', fontSize: 13 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  stickerRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  sticker: {
-    width: 48, height: 48, borderRadius: radius.md, borderWidth: 2, borderColor: colors.outlineVariant,
-    alignItems: 'center', justifyContent: 'center', marginRight: 8, marginBottom: 8,
-    backgroundColor: colors.surfaceContainerLow,
+  moodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  moodChip: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    width: 62,
+    paddingVertical: 10,
+    borderRadius: radius.lg,
+    borderWidth: 2,
   },
-  stickerSelected: { borderColor: colors.primary, backgroundColor: colors.primaryContainer },
-  stickerEmoji: { fontSize: 22 },
+  moodEmoji: { fontSize: 20 },
+  moodLabel: { fontSize: 10.5, fontWeight: '700', color: colors.onSurfaceVariant },
+  moodLabelActive: { color: colors.onSurface, fontWeight: '800' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  tagChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: radius.full,
+    borderWidth: 1.5,
+    borderColor: colors.outlineVariant,
+    backgroundColor: colors.surfaceContainerLow,
+    marginRight: 8,
+    marginBottom: 8,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  tagChipSelected: { borderColor: colors.primary, backgroundColor: colors.primaryContainer },
+  tagChipText: { fontSize: 13, fontWeight: '600', color: colors.onSurfaceVariant },
+  tagChipTextSelected: { color: colors.primary, fontWeight: '700' },
 });
