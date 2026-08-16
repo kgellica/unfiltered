@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EntryController;
-use App\Http\Controllers\UploadController;
+use App\Http\Controllers\Api\UploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,6 +32,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // ============================================
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/me', [AuthController::class, 'me']);  // Alias for /user
+    Route::patch('/user/profile', [AuthController::class, 'updateProfile']);
+    Route::patch('/user/password', [AuthController::class, 'changePassword']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // ============================================

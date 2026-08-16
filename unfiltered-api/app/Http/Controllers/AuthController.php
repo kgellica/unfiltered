@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -94,6 +95,64 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Successfully logged out.',
+        ]);
+    }
+
+    /**
+     * Update the authenticated user's profile (currently: avatar & name).
+     * The mobile app uploads the image file to POST /uploads first, then
+     * sends the returned URL here so the user picks their own photo instead
+     * of a hardcoded placeholder avatar.
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => [
+                'sometimes',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+            'avatar_url' => 'sometimes|nullable|string|max:2048',
+        ]);
+
+        $user->fill($validated);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated.',
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * Change the authenticated user's password after verifying their
+     * current one.
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Your current password is incorrect.'],
+            ]);
+        }
+
+        $user->password = Hash::make($validated['password']);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Password updated.',
         ]);
     }
 
