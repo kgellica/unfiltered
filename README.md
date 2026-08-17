@@ -1,6 +1,18 @@
 # unfiltered — A Digital Journaling Sanctuary
 
-**Unfiltered** is a full-stack digital journaling platform designed to provide a safe, cozy space for recording daily thoughts, mood tracking, and personal reflections. Built as a monorepo, it seamlessly connects a Laravel API backend with web and mobile clients.
+**unfiltered** is a full-stack digital journaling platform designed to provide a safe, cozy space for recording daily thoughts, mood tracking, and personal reflections. Built as a monorepo, it seamlessly connects a Laravel API backend with web and mobile clients.
+
+---
+
+## Group Members
+* Andong, Bai Fatima
+* Cahilig, Christian James
+* Gellica, Karylle Mish
+
+---
+
+## Course 
+CCE 106L – Applications Development and Emerging Technologies
 
 ---
 
