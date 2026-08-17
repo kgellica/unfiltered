@@ -9,12 +9,8 @@
 * Cahilig, Christian James
 * Gellica, Karylle Mish
 
----
-
 ## Course 
 CCE 106L – Applications Development and Emerging Technologies
-
----
 
 ## Repository Structure
 
