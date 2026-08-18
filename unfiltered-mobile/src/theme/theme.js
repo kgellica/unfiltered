@@ -1,8 +1,3 @@
-// Matches unfiltered-web/src/styles/theme.css — "Warm Milk Tea & Cream Cafe" (light mode)
-// `colors` is a single mutable object (not re-created) so that screens which
-// read `colors.x` inside their StyleSheet pick up applyMode/applyAccent
-// changes the next time they render, without every screen needing to
-// subscribe to ThemeContext individually.
 export const colors = {
   // Core surfaces
   background: '#faf5ee',

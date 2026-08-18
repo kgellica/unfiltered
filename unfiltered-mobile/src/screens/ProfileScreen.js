@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, ActivityIndicator, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Pencil, User as UserIcon, Lock, Palette, ChevronRight, LogOut, X } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
 
-// Profile hub — reached from the bottom tab bar. Kept deliberately minimal:
-// identity up top, four settings destinations, then log out. Entry stats
-// (total entries, streak, tags used) and data-management items
-// (export/privacy) live on the Dashboard/Journal now, not here.
 const MENU_ITEMS = [
   { key: 'EditProfile', label: 'Edit Profile', hint: 'Name & profile photo', Icon: Pencil },
   { key: 'UserProfile', label: 'User Profile', hint: 'Your account details', Icon: UserIcon },
@@ -31,8 +27,14 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* HCI FIXED Header */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
+
         {/* Identity */}
         <View style={styles.profileSection}>
           <TouchableOpacity
@@ -110,13 +112,31 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { paddingHorizontal: spacing.gutter, paddingTop: 28, paddingBottom: 48 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
+  },
+  scrollContent: { paddingHorizontal: spacing.gutter, paddingBottom: 48 },
+  
+  headerContainer: {
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 0,
+    paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.onBackground,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    letterSpacing: -0.5,
+  },
+
   profileSection: { alignItems: 'center', marginBottom: 32 },
   avatarWrapper: { position: 'relative', marginBottom: 14 },
   avatarImage: { width: 104, height: 104, borderRadius: 52, backgroundColor: colors.surfaceMuted },

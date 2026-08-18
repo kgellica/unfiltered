@@ -1,7 +1,14 @@
 import client from './client';
 
 export const listEntries = (params = {}) =>
-  client.get('/entries', { params }).then((r) => r.data.entries);
+  client.get('/entries', { params }).then((r) => {
+    const entries = r.data.entries || [];
+    // Return the entry exactly as the API gives it
+    return entries.map(entry => ({
+      ...entry,
+      tags: entry.tags || [],
+    }));
+  });
 
 export const getEntriesByMonth = (yyyyMM) =>
   listEntries({ month: yyyyMM });

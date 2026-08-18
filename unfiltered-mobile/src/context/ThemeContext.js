@@ -20,36 +20,48 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     (async () => {
-      const [storedMode, storedAccent, storedCustom, storedPremium] = await Promise.all([
-        AsyncStorage.getItem(MODE_KEY),
-        AsyncStorage.getItem(ACCENT_KEY),
-        AsyncStorage.getItem(CUSTOM_ACCENT_KEY),
-        AsyncStorage.getItem(PREMIUM_KEY),
-      ]);
-      const m = storedMode || 'light';
-      const a = storedAccent || 'pink';
-      const c = storedCustom || '#f472b6';
-      applyMode(m);
-      applyAccent(a === 'custom' ? c : a);
-      setModeState(m);
-      setAccentState(a);
-      setCustomAccentState(c);
-      setIsPremiumState(storedPremium === '1');
-      setReady(true);
+      try {
+        const [storedMode, storedAccent, storedCustom, storedPremium] = await Promise.all([
+          AsyncStorage.getItem(MODE_KEY),
+          AsyncStorage.getItem(ACCENT_KEY),
+          AsyncStorage.getItem(CUSTOM_ACCENT_KEY),
+          AsyncStorage.getItem(PREMIUM_KEY),
+        ]);
+        
+        const m = storedMode || 'light';
+        const a = storedAccent || 'pink';
+        const c = storedCustom || '#f472b6';
+        
+        // Apply the theme
+        applyMode(m);
+        applyAccent(a === 'custom' ? c : a);
+        
+        setModeState(m);
+        setAccentState(a);
+        setCustomAccentState(c);
+        setIsPremiumState(storedPremium === '1');
+      } catch (error) {
+        console.error('Error loading theme settings:', error);
+        // Fallback to defaults
+        applyMode('light');
+        applyAccent('#f472b6');
+      } finally {
+        setReady(true);
+      }
     })();
   }, []);
 
   const setMode = useCallback((m) => {
     setModeState(m);
     applyMode(m);
-    AsyncStorage.setItem(MODE_KEY, m);
+    AsyncStorage.setItem(MODE_KEY, m).catch(err => console.error('Error saving mode:', err));
   }, []);
 
   const setAccent = useCallback(
     (a) => {
       setAccentState(a);
       applyAccent(a === 'custom' ? customAccent : a);
-      AsyncStorage.setItem(ACCENT_KEY, a);
+      AsyncStorage.setItem(ACCENT_KEY, a).catch(err => console.error('Error saving accent:', err));
     },
     [customAccent]
   );
@@ -57,8 +69,10 @@ export function ThemeProvider({ children }) {
   const setCustomAccent = useCallback(
     (hex) => {
       setCustomAccentState(hex);
-      AsyncStorage.setItem(CUSTOM_ACCENT_KEY, hex);
-      if (accent === 'custom') applyAccent(hex);
+      AsyncStorage.setItem(CUSTOM_ACCENT_KEY, hex).catch(err => console.error('Error saving custom accent:', err));
+      if (accent === 'custom') {
+        applyAccent(hex);
+      }
     },
     [accent]
   );
@@ -66,16 +80,28 @@ export function ThemeProvider({ children }) {
   const togglePremium = useCallback(() => {
     setIsPremiumState((prev) => {
       const next = !prev;
-      AsyncStorage.setItem(PREMIUM_KEY, next ? '1' : '0');
+      AsyncStorage.setItem(PREMIUM_KEY, next ? '1' : '0').catch(err => console.error('Error saving premium status:', err));
       return next;
     });
   }, []);
 
-  if (!ready) return null;
+  if (!ready) {
+    // You can return a loading screen here if you want
+    return null;
+  }
 
   return (
     <ThemeContext.Provider
-      value={{ mode, setMode, accent, setAccent, customAccent, setCustomAccent, isPremium, togglePremium }}
+      value={{ 
+        mode, 
+        setMode, 
+        accent, 
+        setAccent, 
+        customAccent, 
+        setCustomAccent, 
+        isPremium, 
+        togglePremium 
+      }}
     >
       {children}
     </ThemeContext.Provider>
@@ -83,5 +109,9 @@ export function ThemeProvider({ children }) {
 }
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
 }

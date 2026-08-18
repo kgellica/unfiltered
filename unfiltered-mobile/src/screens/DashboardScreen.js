@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   Pressable,
   RefreshControl,
   Animated,
-  Image,
   Platform,
-  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { NotebookPen, CalendarCheck, Plus, Flame } from 'lucide-react-native';
+import { NotebookPen, CalendarCheck, Flame } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { getEntriesByMonth, getStats } from '../api/entries';
 import { colors } from '../theme/theme';
@@ -302,155 +302,155 @@ export default function DashboardScreen({ navigation }) {
     return days.size;
   }, [entries]);
 
-  const daysInSelectedMonth = new Date(currentYear, selectedMonthIdx + 1, 0).getDate();
+  const daysInSelectedMonth = useMemo(() => {
+    return new Date(currentYear, selectedMonthIdx + 1, 0).getDate();
+  }, [currentYear, selectedMonthIdx]);
 
   const handleNewEntry = () => {
     navigation.navigate('NewEntry');
   };
 
   return (
-    <ScrollView
-      key={`dashboard-${forceRefresh}`}
-      style={styles.flex}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-    >
-      {/* Animated Greeting - No "Home" header */}
-      <View style={styles.greetingWrapper}>
-        <AnimatedGreeting userName={user?.name} avatarUrl={user?.avatar_url} />
-      </View>
-
-      {/* Segmented Toggle Control */}
-      <View style={styles.toggleWrapper}>
-        <View style={styles.segmentedControl}>
-          <Pressable
-            style={[styles.segmentBtn, viewMode === 'Month' && styles.segmentBtnActive]}
-            onPress={() => setViewMode('Month')}
-          >
-            <Text style={[styles.segmentText, viewMode === 'Month' && styles.segmentTextActive]}>
-              Month
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segmentBtn, viewMode === 'Year' && styles.segmentBtnActive]}
-            onPress={() => setViewMode('Year')}
-          >
-            <Text style={[styles.segmentText, viewMode === 'Year' && styles.segmentTextActive]}>
-              Year
-            </Text>
-          </Pressable>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        key={`dashboard-${forceRefresh}`}
+        style={styles.flex}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+      >
+        <View style={styles.greetingWrapper}>
+          <AnimatedGreeting userName={user?.name} avatarUrl={user?.avatar_url} />
         </View>
-      </View>
 
-      {viewMode === 'Month' ? (
-        <>
-          {/* Bookshelf Section */}
-          <View style={styles.shelfWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.booksRow}
+        <View style={styles.toggleWrapper}>
+          <View style={styles.segmentedControl}>
+            <Pressable
+              style={[styles.segmentBtn, viewMode === 'Month' && styles.segmentBtnActive]}
+              onPress={() => setViewMode('Month')}
             >
-              {visibleMonths.map((item, idx) => (
-                <BookItem
-                  key={item.short}
-                  item={item}
-                  monthIndex={idx}
-                  isSelected={selectedMonthIdx === idx}
-                  onPress={() => setSelectedMonthIdx(idx)}
-                />
-              ))}
-            </ScrollView>
-            <View style={styles.shelfBase} />
+              <Text style={[styles.segmentText, viewMode === 'Month' && styles.segmentTextActive]}>Month</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.segmentBtn, viewMode === 'Year' && styles.segmentBtnActive]}
+              onPress={() => setViewMode('Year')}
+            >
+              <Text style={[styles.segmentText, viewMode === 'Year' && styles.segmentTextActive]}>Year</Text>
+            </Pressable>
           </View>
+        </View>
 
-          {/* Dynamic Month Summary Card */}
-          <View style={styles.summaryCard}>
-            <View style={styles.streakPillContainer}>
-              <View style={styles.streakPill}>
-                <Flame size={13} color={streak > 0 ? colors.accent : colors.onSurfaceFaint} strokeWidth={2.2} />
-                <Text style={[styles.streakText, streak === 0 && styles.streakTextZero]}>
-                  {streak} day{streak === 1 ? '' : 's'}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.summaryTitle}>
-              {selectedMonth.full} {currentYear}
-            </Text>
-
-            <View style={styles.metricRow}>
-              <View style={[styles.metricIconBox, { backgroundColor: colors.accentSoft }]}>
-                <NotebookPen size={16} color={colors.accent} strokeWidth={2.1} />
-              </View>
-              <View>
-                <Text style={styles.metricSubLabel}>ENTRIES</Text>
-                <Text style={styles.metricValText}>{entries.length} this month</Text>
-              </View>
+        {viewMode === 'Month' ? (
+          <>
+            <View style={styles.shelfWrapper}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.booksRow}>
+                {visibleMonths.map((item, idx) => (
+                  <BookItem
+                    key={item.short}
+                    item={item}
+                    monthIndex={idx}
+                    isSelected={selectedMonthIdx === idx}
+                    onPress={() => setSelectedMonthIdx(idx)}
+                  />
+                ))}
+              </ScrollView>
+              <View style={styles.shelfBase} />
             </View>
 
-            <View style={styles.metricRow}>
-              <View style={[styles.metricIconBox, { backgroundColor: colors.accentSoft }]}>
-                <CalendarCheck size={16} color={colors.accent} strokeWidth={2.1} />
+            <View style={styles.summaryCard}>
+              <View style={styles.streakPillContainer}>
+                <View style={styles.streakPill}>
+                  <Flame size={14} color={streak > 0 ? colors.accent : colors.onSurfaceFaint} strokeWidth={2.2} />
+                  <Text style={[styles.streakText, streak === 0 && styles.streakTextZero]}>
+                    {streak} day{streak === 1 ? '' : 's'}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.metricSubLabel}>CONSISTENCY</Text>
-                <Text style={styles.metricValText}>
-                  {activeDaysCount}/{daysInSelectedMonth} days
-                </Text>
+
+              <Text style={styles.summaryTitle}>
+                {selectedMonth.full} {currentYear}
+              </Text>
+
+              <View style={styles.metricRow}>
+                <View style={[styles.metricIconBox, { backgroundColor: colors.accentSoft }]}>
+                  <NotebookPen size={16} color={colors.accent} strokeWidth={2.1} />
+                </View>
+                <View>
+                  <Text style={styles.metricSubLabel}>ENTRIES</Text>
+                  <Text style={styles.metricValText}>{entries.length} this month</Text>
+                </View>
+              </View>
+
+              <View style={styles.metricRow}>
+                <View style={[styles.metricIconBox, { backgroundColor: colors.accentSoft }]}>
+                  <CalendarCheck size={16} color={colors.accent} strokeWidth={2.1} />
+                </View>
+                <View>
+                  <Text style={styles.metricSubLabel}>CONSISTENCY</Text>
+                  <Text style={styles.metricValText}>
+                    {activeDaysCount}/{daysInSelectedMonth} days
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.cardFooter}>
+                <Pressable style={styles.newEntryBtn} onPress={handleNewEntry}>
+                  <Text style={styles.newEntryBtnText}>+ NEW ENTRY</Text>
+                </Pressable>
               </View>
             </View>
 
-            <View style={styles.cardFooter}>
-              <Pressable style={styles.newEntryBtn} onPress={handleNewEntry}>
-                <Text style={styles.newEntryBtnText}>+ NEW ENTRY</Text>
-              </Pressable>
+            <View style={styles.affirmationWrapper}>
+              <InlineAffirmation />
             </View>
-          </View>
-
-          {/* Affirmation box now lives inline on the page, right below the
-              month summary — not a modal. */}
-          <InlineAffirmation />
-        </>
-      ) : (
-        <>
-          <View style={styles.summaryCard}>
-            <View style={styles.streakPillContainer}>
-              <View style={styles.streakPill}>
-                <Flame size={13} color={streak > 0 ? colors.accent : colors.onSurfaceFaint} strokeWidth={2.2} />
-                <Text style={[styles.streakText, streak === 0 && styles.streakTextZero]}>
-                  {streak} day{streak === 1 ? '' : 's'}
-                </Text>
+          </>
+        ) : (
+          <>
+            <View style={styles.summaryCard}>
+              <View style={styles.streakPillContainer}>
+                <View style={styles.streakPill}>
+                  <Flame size={13} color={streak > 0 ? colors.accent : colors.onSurfaceFaint} strokeWidth={2.2} />
+                  <Text style={[styles.streakText, streak === 0 && styles.streakTextZero]}>
+                    {streak} day{streak === 1 ? '' : 's'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.summaryTitle}>Year {joinYear}</Text>
+              <Text style={styles.yearSubtext}>your journal, since you joined</Text>
+              <View style={styles.cardFooter}>
+                <Pressable style={styles.newEntryBtn} onPress={() => navigation.navigate('Calendar')}>
+                  <Text style={styles.newEntryBtnText}>VIEW CALENDAR</Text>
+                </Pressable>
               </View>
             </View>
-            <Text style={styles.summaryTitle}>Year {joinYear}</Text>
-            <Text style={styles.yearSubtext}>your journal, since you joined</Text>
-            <View style={styles.cardFooter}>
-              <Pressable style={styles.newEntryBtn} onPress={() => navigation.navigate('Calendar')}>
-                <Text style={styles.newEntryBtnText}>VIEW CALENDAR</Text>
-              </Pressable>
+            <View style={styles.affirmationWrapper}>
+              <InlineAffirmation />
             </View>
-          </View>
-          <InlineAffirmation />
-        </>
-      )}
-    </ScrollView>
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  flex: { flex: 1 },
   container: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 40 : 16,
     paddingBottom: 40,
   },
   
   greetingWrapper: {
+    marginTop: 20,
     marginBottom: 16,
   },
 
-  toggleWrapper: { alignItems: 'center', marginBottom: 20 },
+  toggleWrapper: { alignItems: 'center', marginBottom: 12 },
   segmentedControl: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceMuted,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     padding: 3,
     width: 230,
     alignItems: 'center',
-    shadowColor: '#46302a',
+    shadowColor: colors.onBackground,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   segmentBtn: { flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   segmentBtnActive: { backgroundColor: colors.accent },
   segmentText: { fontSize: 13, fontWeight: '600', color: colors.onSurfaceVariant },
-  segmentTextActive: { color: '#FFFFFF', fontWeight: '700' },
+  segmentTextActive: { color: colors.accentInk, fontWeight: '700' },
 
   shelfWrapper: { alignItems: 'center', marginBottom: 28 },
   booksRow: {
@@ -488,13 +488,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     justifyContent: 'space-between',
     position: 'relative',
-    shadowColor: '#000',
+    shadowColor: colors.onBackground,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
   },
-
   bookmarkWrap: {
     position: 'absolute',
     top: -9,
@@ -505,10 +504,10 @@ const styles = StyleSheet.create({
   bookmarkTab: {
     width: 12,
     height: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 4,
     borderTopRightRadius: 4,
-    shadowColor: '#000',
+    shadowColor: colors.onBackground,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 3,
@@ -522,9 +521,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 5,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#FFFFFF',
+    borderTopColor: colors.surface,
   },
-
   iconBadge: {
     width: 24,
     height: 24,
@@ -545,67 +543,70 @@ const styles = StyleSheet.create({
   shelfBase: { width: '100%', height: 12, backgroundColor: colors.surfaceMuted, borderRadius: 6, marginTop: 4 },
 
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 24,
     position: 'relative',
-    shadowColor: '#000',
+    shadowColor: colors.onBackground,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#F0EFF2',
+    borderColor: colors.borderSoft,
   },
-  
-  // Streak Pill positioned in upper right of summary card
   streakPillContainer: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 20,
+    right: 20,
     zIndex: 5,
   },
   streakPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.borderSoft,
   },
   streakText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: colors.accent,
   },
   streakTextZero: {
     color: colors.onSurfaceFaint,
   },
-
   summaryTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontWeight: '800',
-    color: '#1F2937',
-    marginBottom: 16,
-    paddingRight: 60, // Add padding to prevent title overlapping with streak
+    color: colors.onBackground,
+    marginBottom: 20,
+    paddingRight: 70,
   },
-  yearSubtext: { fontSize: 13, color: '#6B7280', marginTop: -10, marginBottom: 16 },
+  yearSubtext: { fontSize: 13, color: colors.onSurfaceVariant, marginTop: -10, marginBottom: 16 },
   metricRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 10,
+    backgroundColor: colors.surfaceMuted,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
   },
-  metricIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  metricSubLabel: { fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '800', color: '#9CA3AF', letterSpacing: 0.5 },
-  metricValText: { fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '700', color: '#111827', marginTop: 2 },
-  cardFooter: { alignItems: 'flex-end', marginTop: 8 },
-  newEntryBtn: { backgroundColor: colors.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
-  newEntryBtnText: { color: '#FFFFFF', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
+  metricIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  metricSubLabel: { fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '800', color: colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 2 },
+  metricValText: { fontSize: 15, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '700', color: colors.onBackground },
+  cardFooter: { alignItems: 'flex-end', marginTop: 6 },
+  newEntryBtn: { backgroundColor: colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14 },
+  newEntryBtnText: { color: colors.accentInk, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
+  affirmationWrapper: {
+    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
 });

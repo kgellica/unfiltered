@@ -32,6 +32,7 @@
       "eas": {
         "projectId": "8d2826ec-06ba-4869-aa35-8a87cd622dcc"
       }
-    }
+    },
+    "plugins": []
   }
 }

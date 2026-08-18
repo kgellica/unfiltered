@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
-import { RefreshCw, Heart, Copy, Check, Sparkles } from 'lucide-react-native';
+import { RefreshCw, Heart, Copy, Check } from 'lucide-react-native';
 import { colors, radius } from '../theme/theme';
 
 const AFFIRMATION_PRESETS = [
@@ -17,7 +17,6 @@ const AFFIRMATION_PRESETS = [
 
 const FAV_KEY = 'uf_fav_affirmations';
 
-// Rendered inline on the Dashboard, right in the flow of the page — not a
 // modal — so it reads as a small daily-ritual card rather than an
 // interruption.
 export default function InlineAffirmation() {
@@ -57,13 +56,14 @@ export default function InlineAffirmation() {
 
   return (
     <View style={styles.card}>
+      
       <View style={styles.headerRow}>
-        <Sparkles size={15} color={colors.accent} strokeWidth={2.2} />
         <Text style={styles.headerLabel}>daily affirmation</Text>
       </View>
 
       <Text style={styles.affirmationText}>{currentText}</Text>
 
+      {/* BUTTONS - PERFECTLY CENTERED */}
       <View style={styles.actionsRow}>
         <Pressable
           style={styles.iconBtn}
@@ -74,6 +74,7 @@ export default function InlineAffirmation() {
         >
           <RefreshCw size={14} color={colors.onSurfaceVariant} strokeWidth={2.2} />
         </Pressable>
+        
         <Pressable
           style={styles.iconBtn}
           onPress={toggleFavorite}
@@ -81,8 +82,14 @@ export default function InlineAffirmation() {
           accessibilityRole="button"
           accessibilityLabel={isFav ? 'Remove from favorites' : 'Save to favorites'}
         >
-          <Heart size={14} color={isFav ? colors.accent : colors.onSurfaceVariant} fill={isFav ? colors.accent : 'none'} strokeWidth={2.2} />
+          <Heart 
+            size={14} 
+            color={isFav ? colors.accent : colors.onSurfaceVariant} 
+            fill={isFav ? colors.accent : 'none'} 
+            strokeWidth={2.2} 
+          />
         </Pressable>
+        
         <Pressable
           style={styles.iconBtn}
           onPress={copyCurrent}
@@ -109,15 +116,45 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
     padding: 18,
     marginTop: 16,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  headerLabel: { fontSize: 11, fontWeight: '800', color: colors.onSurfaceVariant, letterSpacing: 0.5, textTransform: 'uppercase' },
-  affirmationText: { fontSize: 14.5, fontWeight: '600', color: colors.onSurface, lineHeight: 21 },
-  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  
+  headerRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    gap: 6, 
+    marginBottom: 8 
+  },
+  headerLabel: { 
+    fontSize: 11, 
+    fontWeight: '800', 
+    color: colors.onSurfaceVariant, 
+    letterSpacing: 0.5, 
+    textTransform: 'uppercase' 
+  },
+  
+  affirmationText: { 
+    fontSize: 14.5, 
+    fontWeight: '600', 
+    color: colors.onSurface, 
+    lineHeight: 21, 
+    textAlign: 'center', 
+  },
+  
+  actionsRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    gap: 12, 
+    marginTop: 12 
+  },
+  
   iconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,

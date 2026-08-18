@@ -1,37 +1,53 @@
 import client from './client';
 
-// Uploads a local file (image or audio) to the Laravel API and returns
-// the public URL to store on the journal entry.
 export async function uploadFile(localUri, type) {
-  if (!localUri || localUri.startsWith('http')) {
-    // already a remote URL (or empty) — nothing to upload
+  if (!localUri) {
+    return null;
+  }
+
+  if (localUri.startsWith('http://') || localUri.startsWith('https://')) {
     return localUri;
   }
 
-  const filename = localUri.split('/').pop();
-  const match = /\.(\w+)$/.exec(filename || '');
-  const ext = match ? match[1] : type === 'photo' ? 'jpg' : 'm4a';
-  const mime = type === 'photo' ? `image/${ext === 'jpg' ? 'jpeg' : ext}` : `audio/${ext}`;
+  const filename = localUri.split('/').pop() || `upload.${type === 'photo' ? 'jpg' : 'm4a'}`;
+  const match = /\.(\w+)$/.exec(filename);
+  const ext = match ? match[1] : (type === 'photo' ? 'jpg' : 'm4a');
+  const mimeType = type === 'photo' ? `image/${ext === 'jpg' ? 'jpeg' : ext}` : `audio/${ext}`;
 
-  const form = new FormData();
-  form.append('type', type);
-  form.append('file', { uri: localUri, name: filename || `upload.${ext}`, type: mime });
+  const formData = new FormData();
+  
+  // Use the correct field name based on type
+  if (type === 'photo') {
+    formData.append('image', {
+      uri: localUri,
+      name: filename,
+      type: mimeType,
+    });
+  } else {
+    formData.append('voice', {
+      uri: localUri,
+      name: filename,
+      type: mimeType,
+    });
+  }
 
   try {
-    const res = await client.post('/uploads', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const endpoint = type === 'photo' ? '/media/upload-image' : '/media/upload-voice';
+    const response = await client.post(endpoint, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 30000,
     });
-    return res.data.url;
-  } catch (err) {
-    // Surface the real server message (validation error, 500, etc.) instead
-    // of a bare network error, so callers can show something actionable.
-    const serverMessage = err?.response?.data?.message;
-    throw new Error(serverMessage || 'Upload failed. Please check your connection and try again.');
+
+    return response.data.url;
+  } catch (error) {
+    console.error('Upload error:', error);
+    const serverMessage = error?.response?.data?.message || error.message || 'Upload failed';
+    throw new Error(serverMessage);
   }
 }
 
-// Uploads a picked photo and saves it as the user's avatar in one step.
-// Returns the updated user object from the API.
 export async function uploadAvatar(localUri) {
   const remoteUrl = await uploadFile(localUri, 'photo');
   try {
@@ -39,6 +55,6 @@ export async function uploadAvatar(localUri) {
     return res.data.user;
   } catch (err) {
     const serverMessage = err?.response?.data?.message;
-    throw new Error(serverMessage || 'Could not update your profile photo. Please try again.');
+    throw new Error(serverMessage || 'Could not update your profile photo.');
   }
 }

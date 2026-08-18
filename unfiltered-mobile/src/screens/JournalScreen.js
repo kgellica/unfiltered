@@ -8,13 +8,17 @@ import {
   TextInput,
   Platform,
   Modal,
+  Image,
+  SafeAreaView,
+  StatusBar,
+  TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import DatePicker from 'react-native-date-picker'; // ✅ Crash-Proof JS Picker
 import { listEntries, getStats } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
-import { Plus, Search, X, Sparkles, ChevronDown, Calendar, Tag, Check } from 'lucide-react-native';
+import { Plus, Search, X, Sparkles, ChevronDown, Calendar, Tag, Check, Mic, CalendarDays } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
-import AnimatedGreeting from '../components/AnimatedGreeting';
 import StreakBar from '../components/StreakBar';
 
 const MOOD_META = {
@@ -52,7 +56,6 @@ function formatShortDate(val) {
   return isToday ? `Today, ${month} ${target.getDate()}` : `${weekday}, ${month} ${target.getDate()}`;
 }
 
-// Date + time, e.g. "today, aug 16 • 5:14 pm" — matches the web entry card.
 function formatDateAndTime(dateVal, createdAt) {
   const dateLabel = formatShortDate(dateVal).toLowerCase();
   if (!createdAt) return dateLabel;
@@ -68,10 +71,14 @@ export default function JournalScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
-  const [selectedDate, setSelectedDate] = useState(''); // YYYY-MM-DD or ''
+  const [selectedDate, setSelectedDate] = useState('');
   const [streak, setStreak] = useState(0);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
+
+  // ✅ NEW CRASH-PROOF DATE PICKER STATE
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(new Date());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,13 +93,14 @@ export default function JournalScreen({ navigation }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const entryDateSet = useMemo(() => new Set(entries.map((e) => normalizeDateKey(e.entry_date))), [entries]);
 
-  // Last 14 days, most recent first — a lightweight date filter strip so
-  // the person can jump straight to a specific day's entry without a full
-  // calendar picker.
   const recentDays = useMemo(() => {
     const out = [];
     const base = new Date();
@@ -134,227 +142,330 @@ export default function JournalScreen({ navigation }) {
   const selectedDateLabel = useMemo(() => {
     if (!selectedDate) return 'any date';
     const match = recentDays.find((d) => toDateKey(d) === selectedDate);
-    if (!match) return 'any date';
+    if (!match) {
+      const [y, m, d] = selectedDate.split('-');
+      const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+      return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
     return match.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }, [selectedDate, recentDays]);
 
   const selectedTagLabel = selectedTag ? `#${selectedTag}` : 'all tags';
 
+  const todayStr = toDateKey(new Date());
+  const yesterdayStr = toDateKey(new Date(new Date().setDate(new Date().getDate() - 1)));
+
+  // ✅ NEW HANDLER FUNCTIONS
+  const handlePresetPress = (dateKey) => {
+    setSelectedDate(dateKey);
+    setDateMenuOpen(false);
+  };
+
+  const handleDateConfirm = (selectedDateObj) => {
+    setOpen(false);
+    setDate(selectedDateObj);
+    const formattedKey = toDateKey(selectedDateObj);
+    setSelectedDate(formattedKey);
+    setDateMenuOpen(false);
+  };
+
+  const openDatePicker = () => {
+    setOpen(true);
+  };
+
   return (
-    <View style={styles.flex}>
-      {/* Header with Animated Greeting */}
-      <View style={styles.header}>
-        <AnimatedGreeting userName={user?.name} avatarUrl={user?.avatar_url} />
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.flex}>
+        
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerTitle}>Journal</Text>
+        </View>
 
-      <View style={styles.streakWrap}>
-        <StreakBar streak={streak} entryDateSet={entryDateSet} />
-      </View>
+        <View style={styles.streakWrapper}>
+          <StreakBar streak={streak} entryDateSet={entryDateSet} />
+        </View>
 
-      {/* Search + filter pills — search / any date / all tags, mirrors web */}
-      <View style={styles.controlsRow}>
-        <View style={styles.searchPill}>
-          <Search size={16} color={colors.onSurfaceFaint} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="search your thoughts..."
-            placeholderTextColor={colors.onSurfaceFaint}
-            value={query}
-            onChangeText={setQuery}
-            returnKeyType="search"
-            accessibilityLabel="Search journal entries"
-          />
-          {query.length > 0 && (
-            <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search">
-              <X size={16} color={colors.onSurfaceFaint} />
+        <View style={styles.controlsRow}>
+          <View style={styles.searchPill}>
+            <Search size={16} color={colors.onSurfaceFaint} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="search your thoughts..."
+              placeholderTextColor={colors.onSurfaceFaint}
+              value={query}
+              onChangeText={setQuery}
+              returnKeyType="search"
+              accessibilityLabel="Search journal entries"
+            />
+            {query.length > 0 && (
+              <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search">
+                <X size={16} color={colors.onSurfaceFaint} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.filterPillsRow}>
+          <Pressable
+            style={[styles.filterPill, selectedDate && styles.filterPillActive]}
+            onPress={() => setDateMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by date"
+          >
+            <Calendar size={13} color={selectedDate ? colors.accentInk : colors.onSurfaceVariant} strokeWidth={2.2} />
+            <Text style={[styles.filterPillText, selectedDate && styles.filterPillTextActive]}>{selectedDateLabel}</Text>
+            <ChevronDown size={13} color={selectedDate ? colors.accentInk : colors.onSurfaceFaint} strokeWidth={2.4} />
+          </Pressable>
+
+          <Pressable
+            style={[styles.filterPill, selectedTag && styles.filterPillActive]}
+            onPress={() => setTagMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by tag"
+          >
+            <Tag size={13} color={selectedTag ? colors.accentInk : colors.onSurfaceVariant} strokeWidth={2.2} />
+            <Text style={[styles.filterPillText, selectedTag && styles.filterPillTextActive]}>{selectedTagLabel}</Text>
+            <ChevronDown size={13} color={selectedTag ? colors.accentInk : colors.onSurfaceFaint} strokeWidth={2.4} />
+          </Pressable>
+
+          {hasFilters && (
+            <Pressable onPress={() => { setQuery(''); setSelectedTag(''); setSelectedDate(''); }} style={styles.clearFilters}>
+              <Text style={styles.clearFiltersText}>clear ✕</Text>
             </Pressable>
           )}
         </View>
-      </View>
 
-      <View style={styles.filterPillsRow}>
-        <Pressable
-          style={[styles.filterPill, selectedDate && styles.filterPillActive]}
-          onPress={() => setDateMenuOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Filter by date"
-        >
-          <Calendar size={13} color={selectedDate ? colors.accentInk : colors.onSurfaceVariant} strokeWidth={2.2} />
-          <Text style={[styles.filterPillText, selectedDate && styles.filterPillTextActive]}>{selectedDateLabel}</Text>
-          <ChevronDown size={13} color={selectedDate ? colors.accentInk : colors.onSurfaceFaint} strokeWidth={2.4} />
-        </Pressable>
+        <Modal visible={dateMenuOpen} transparent animationType="fade" onRequestClose={() => setDateMenuOpen(false)}>
+          <Pressable style={styles.menuOverlay} onPress={() => setDateMenuOpen(false)}>
+            <View style={styles.menuSheet}>
+              
+              <View style={styles.dateModalHeader}>
+                <CalendarDays size={16} color={colors.accent} strokeWidth={2.2} />
+                <Text style={styles.dateModalTitle}>filter by date</Text>
+              </View>
+              <View style={styles.dateModalDivider} />
 
-        <Pressable
-          style={[styles.filterPill, selectedTag && styles.filterPillActive]}
-          onPress={() => setTagMenuOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Filter by tag"
-        >
-          <Tag size={13} color={selectedTag ? colors.accentInk : colors.onSurfaceVariant} strokeWidth={2.2} />
-          <Text style={[styles.filterPillText, selectedTag && styles.filterPillTextActive]}>{selectedTagLabel}</Text>
-          <ChevronDown size={13} color={selectedTag ? colors.accentInk : colors.onSurfaceFaint} strokeWidth={2.4} />
-        </Pressable>
+              <View style={styles.presetRow}>
+                <Pressable
+                  style={[styles.presetBtn, !selectedDate && styles.presetBtnActive]}
+                  onPress={() => handlePresetPress('')}
+                >
+                  <Text style={[styles.presetBtnText, !selectedDate && styles.presetBtnTextActive]}>all</Text>
+                </Pressable>
 
-        {hasFilters && (
-          <Pressable onPress={() => { setQuery(''); setSelectedTag(''); setSelectedDate(''); }} style={styles.clearFilters}>
-            <Text style={styles.clearFiltersText}>clear ✕</Text>
-          </Pressable>
-        )}
-      </View>
+                <Pressable
+                  style={[styles.presetBtn, selectedDate === todayStr && styles.presetBtnActive]}
+                  onPress={() => handlePresetPress(todayStr)}
+                >
+                  <Text style={[styles.presetBtnText, selectedDate === todayStr && styles.presetBtnTextActive]}>today</Text>
+                </Pressable>
 
-      {/* Date picker menu */}
-      <Modal visible={dateMenuOpen} transparent animationType="fade" onRequestClose={() => setDateMenuOpen(false)}>
-        <Pressable style={styles.menuOverlay} onPress={() => setDateMenuOpen(false)}>
-          <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>filter by date</Text>
-            <FlatList
-              data={[{ key: 'any', d: null }, ...recentDays.map((d) => ({ key: toDateKey(d), d }))]}
-              keyExtractor={(item) => item.key}
-              style={{ maxHeight: 320 }}
-              renderItem={({ item }) => {
-                const isAny = item.key === 'any';
-                const active = isAny ? !selectedDate : selectedDate === item.key;
-                const label = isAny
-                  ? 'any date'
-                  : item.d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                return (
-                  <Pressable
-                    style={styles.menuItem}
-                    onPress={() => { setSelectedDate(isAny ? '' : item.key); setDateMenuOpen(false); }}
-                  >
-                    <Text style={[styles.menuItemText, active && styles.menuItemTextActive]}>{label}</Text>
-                    {active && <Check size={15} color={colors.accent} strokeWidth={2.6} />}
-                  </Pressable>
-                );
-              }}
-            />
-          </View>
-        </Pressable>
-      </Modal>
+                <Pressable
+                  style={[styles.presetBtn, selectedDate === yesterdayStr && styles.presetBtnActive]}
+                  onPress={() => handlePresetPress(yesterdayStr)}
+                >
+                  <Text style={[styles.presetBtnText, selectedDate === yesterdayStr && styles.presetBtnTextActive]}>yesterday</Text>
+                </Pressable>
+              </View>
 
-      {/* Tag picker menu */}
-      <Modal visible={tagMenuOpen} transparent animationType="fade" onRequestClose={() => setTagMenuOpen(false)}>
-        <Pressable style={styles.menuOverlay} onPress={() => setTagMenuOpen(false)}>
-          <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>filter by tag</Text>
-            <FlatList
-              data={['any', ...allTags]}
-              keyExtractor={(t) => t}
-              style={{ maxHeight: 320 }}
-              ListEmptyComponent={<Text style={styles.menuEmptyText}>no tags yet</Text>}
-              renderItem={({ item }) => {
-                const isAny = item === 'any';
-                const active = isAny ? !selectedTag : selectedTag === item;
-                return (
-                  <Pressable
-                    style={styles.menuItem}
-                    onPress={() => { setSelectedTag(isAny ? '' : item); setTagMenuOpen(false); }}
-                  >
-                    <Text style={[styles.menuItemText, active && styles.menuItemTextActive]}>
-                      {isAny ? 'all tags' : `#${item}`}
-                    </Text>
-                    {active && <Check size={15} color={colors.accent} strokeWidth={2.6} />}
-                  </Pressable>
-                );
-              }}
-            />
-          </View>
-        </Pressable>
-      </Modal>
+              <Text style={styles.pickerLabel}>pick specific day:</Text>
+              <TouchableOpacity
+                style={styles.dateInputBox}
+                activeOpacity={0.7}
+                onPress={openDatePicker}
+              >
+                <Text style={styles.dateInputText}>
+                  {selectedDate && selectedDate !== todayStr && selectedDate !== yesterdayStr
+                    ? selectedDate.split('-').join('/')
+                    : 'mm/dd/yyyy'}
+                </Text>
+                <Calendar size={18} color={colors.onSurfaceVariant} strokeWidth={2} />
+              </TouchableOpacity>
 
-      <FlatList
-        style={styles.flex}
-        contentContainerStyle={styles.listContent}
-        data={visibleEntries}
-        keyExtractor={(item) => String(item.id)}
-        refreshing={loading}
-        onRefresh={load}
-        ListEmptyComponent={
-          !loading && (
-            <View style={styles.empty}>
-              <Sparkles size={26} color={colors.accent} style={{ marginBottom: 8 }} />
-              <Text style={styles.emptyTitle}>
-                {hasFilters ? 'no entries match your filters' : 'no entries yet'}
-              </Text>
-              <Text style={styles.emptySub}>
-                {hasFilters ? 'try clearing your search or tag filter.' : 'tap the + button below to write your first thought today.'}
-              </Text>
             </View>
-          )
-        }
-        renderItem={({ item }) => {
-          const mood = MOOD_META[item.mood] || MOOD_META.good;
-          const plainText = (item.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-          const tags = item.tags || [];
-          return (
-            <Pressable
-              style={styles.card}
-              onPress={() => navigation.navigate('NewEntry', { entryId: item.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`Open entry: ${item.title || 'untitled reflection'}`}
-            >
-              <View style={styles.cardTopRow}>
-                <View style={styles.cardDateRow}>
-                  <Calendar size={12} color={colors.onSurfaceFaint} strokeWidth={2.2} />
-                  <Text style={styles.cardDate}>{formatDateAndTime(item.entry_date, item.created_at)}</Text>
-                </View>
-                <View style={styles.moodPill}>
-                  <Text style={styles.moodPillText}>{mood.emoji} {mood.label}</Text>
-                </View>
-              </View>
-              <Text style={styles.cardTitle} numberOfLines={1}>
-                {item.title || 'untitled reflection'}
-              </Text>
-              <Text style={styles.cardBody} numberOfLines={2}>
-                {plainText || 'no content written yet...'}
-              </Text>
-              <View style={styles.cardDivider} />
-              <View style={styles.cardFooterRow}>
-                {tags.length > 0 ? (
-                  <View style={styles.cardTagsRow}>
-                    {tags.slice(0, 3).map((t) => {
-                      const name = t.name || t;
-                      return (
-                        <View key={name} style={styles.cardTag}>
-                          <Text style={styles.cardTagText}>#{name}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <Text style={styles.cardNoTags}>no tags</Text>
-                )}
-                <Text style={styles.cardOpenLink}>open ›</Text>
-              </View>
-            </Pressable>
-          );
-        }}
-      />
+          </Pressable>
+        </Modal>
 
-      {/* Floating "new entry" action */}
-      <Pressable
-        style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.94 }] }]}
-        onPress={() => navigation.navigate('NewEntry')}
-        accessibilityRole="button"
-        accessibilityLabel="Write a new journal entry"
-      >
-        <Plus size={26} color={colors.accentInk} strokeWidth={2.5} />
-      </Pressable>
-    </View>
+        {/* ✅ REACT-NATIVE-DATE-PICKER (CRASH PROOF) */}
+        <DatePicker
+          modal
+          open={open}
+          date={date}
+          onConfirm={handleDateConfirm}
+          onCancel={() => {
+            setOpen(false);
+            setDateMenuOpen(false);
+          }}
+          maximumDate={new Date()}
+          mode="date"
+        />
+
+        <Modal visible={tagMenuOpen} transparent animationType="fade" onRequestClose={() => setTagMenuOpen(false)}>
+          <Pressable style={styles.menuOverlay} onPress={() => setTagMenuOpen(false)}>
+            <View style={styles.menuSheet}>
+              <Text style={styles.menuTitle}>filter by tag</Text>
+              <FlatList
+                data={['any', ...allTags]}
+                keyExtractor={(t) => t}
+                style={{ maxHeight: 320 }}
+                ListEmptyComponent={<Text style={styles.menuEmptyText}>no tags yet</Text>}
+                renderItem={({ item }) => {
+                  const isAny = item === 'any';
+                  const active = isAny ? !selectedTag : selectedTag === item;
+                  return (
+                    <Pressable
+                      style={styles.menuItem}
+                      onPress={() => { setSelectedTag(isAny ? '' : item); setTagMenuOpen(false); }}
+                    >
+                      <Text style={[styles.menuItemText, active && styles.menuItemTextActive]}>
+                        {isAny ? 'all tags' : `#${item}`}
+                      </Text>
+                      {active && <Check size={15} color={colors.accent} strokeWidth={2.6} />}
+                    </Pressable>
+                  );
+                }}
+              />
+            </View>
+          </Pressable>
+        </Modal>
+
+        <FlatList
+          style={styles.flex}
+          contentContainerStyle={styles.listContent}
+          data={visibleEntries}
+          keyExtractor={(item) => String(item.id)}
+          refreshing={loading}
+          onRefresh={load}
+          ListEmptyComponent={
+            !loading && (
+              <View style={styles.empty}>
+                <Sparkles size={26} color={colors.accent} style={{ marginBottom: 8 }} />
+                <Text style={styles.emptyTitle}>
+                  {hasFilters ? 'no entries match your filters' : 'no entries yet'}
+                </Text>
+                <Text style={styles.emptySub}>
+                  {hasFilters ? 'try clearing your search or tag filter.' : 'tap the + button below to write your first thought today.'}
+                </Text>
+              </View>
+            )
+          }
+          renderItem={({ item }) => {
+            const mood = MOOD_META[item.mood] || MOOD_META.good;
+            const plainText = (item.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const tags = item.tags || [];
+            const hasPhoto = !!item.photo_path;
+            const hasVoice = !!item.voice_path;
+            
+            return (
+              <Pressable
+                style={styles.card}
+                onPress={() => navigation.navigate('NewEntry', { entryId: item.id })}
+                accessibilityRole="button"
+                accessibilityLabel={`Open entry: ${item.title || 'untitled reflection'}`}
+              >
+                <View style={styles.cardTopRow}>
+                  <View style={styles.cardDateRow}>
+                    <Calendar size={12} color={colors.onSurfaceFaint} strokeWidth={2.2} />
+                    <Text style={styles.cardDate}>{formatDateAndTime(item.entry_date, item.created_at)}</Text>
+                  </View>
+                  <View style={styles.moodPill}>
+                    <Text style={styles.moodPillText}>{mood.emoji} {mood.label}</Text>
+                  </View>
+                </View>
+                
+                {hasPhoto && (
+                  <View style={styles.attachmentPreview}>
+                    <Image 
+                      source={{ uri: item.photo_path }} 
+                      style={styles.attachmentImage}
+                      resizeMode="cover"
+                    />
+                    {hasVoice && (
+                      <View style={styles.voiceBadge}>
+                        <Mic size={12} color="#FFFFFF" strokeWidth={2.2} />
+                        <Text style={styles.voiceBadgeText}>voice</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+                
+                {!hasPhoto && hasVoice && (
+                  <View style={styles.voicePreview}>
+                    <Mic size={16} color={colors.accent} strokeWidth={2.2} />
+                    <Text style={styles.voicePreviewText}>voice recording attached</Text>
+                  </View>
+                )}
+                
+                <Text style={styles.cardTitle} numberOfLines={1}>
+                  {item.title || 'untitled reflection'}
+                </Text>
+                <Text style={styles.cardBody} numberOfLines={2}>
+                  {plainText || 'no content written yet...'}
+                </Text>
+                <View style={styles.cardDivider} />
+                <View style={styles.cardFooterRow}>
+                  {tags.length > 0 ? (
+                    <View style={styles.cardTagsRow}>
+                      {tags.slice(0, 3).map((t) => {
+                        const name = t.name || t;
+                        return (
+                          <View key={name} style={styles.cardTag}>
+                            <Text style={styles.cardTagText}>#{name}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={styles.cardNoTags}>no tags</Text>
+                  )}
+                  <Text style={styles.cardOpenLink}>open ›</Text>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
+
+        <Pressable
+          style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.94 }] }]}
+          onPress={() => navigation.navigate('NewEntry')}
+          accessibilityRole="button"
+          accessibilityLabel="Write a new journal entry"
+        >
+          <Plus size={26} color={colors.accentInk} strokeWidth={2.5} />
+        </Pressable>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.gutter,
-    paddingTop: Platform.OS === 'ios' ? 48 : 16,
-    paddingBottom: 8,
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
   },
-  streakWrap: {
+  flex: { flex: 1 },
+  
+  headerContainer: {
     paddingHorizontal: spacing.gutter,
-    marginBottom: 4,
+    paddingTop: 0, 
+    paddingBottom: 12,
   },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.onBackground,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    letterSpacing: -0.5,
+  },
+  
+  streakWrapper: {
+    paddingHorizontal: spacing.gutter,
+    marginBottom: 16,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  
   fab: {
     position: 'absolute',
     right: spacing.gutter,
@@ -369,6 +480,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     zIndex: 20,
   },
+  
   searchIcon: { marginRight: -2 },
   searchInput: {
     flex: 1,
@@ -415,8 +527,9 @@ const styles = StyleSheet.create({
   clearFiltersText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.accent,
   },
+
   menuOverlay: {
     flex: 1,
     backgroundColor: 'rgba(50, 36, 30, 0.35)',
@@ -426,11 +539,80 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    paddingTop: 14,
-    paddingBottom: 24,
-    paddingHorizontal: 8,
+    paddingTop: 20,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
     ...cardShadow,
   },
+  dateModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  dateModalTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.accent,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  dateModalDivider: {
+    height: 1,
+    backgroundColor: colors.borderSoft,
+    marginBottom: 16,
+  },
+
+  presetRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  presetBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  presetBtnActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  presetBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.onSurfaceVariant,
+  },
+  presetBtnTextActive: {
+    color: colors.accentInk,
+  },
+
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.onSurfaceVariant,
+    marginBottom: 8,
+  },
+  dateInputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+  },
+  dateInputText: {
+    fontSize: 14,
+    color: colors.onSurface,
+    fontWeight: '500',
+  },
+
   menuTitle: {
     fontSize: 12,
     fontWeight: '800',
@@ -451,6 +633,7 @@ const styles = StyleSheet.create({
   menuItemText: { fontSize: 14.5, color: colors.onSurface, fontWeight: '500' },
   menuItemTextActive: { color: colors.accent, fontWeight: '800' },
   menuEmptyText: { fontSize: 13, color: colors.onSurfaceFaint, paddingHorizontal: 12, paddingVertical: 10 },
+  
   listContent: {
     paddingHorizontal: spacing.gutter,
     paddingBottom: 40,
@@ -486,6 +669,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.onSurface,
+  },
+  attachmentPreview: {
+    marginBottom: 10,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: colors.surfaceMuted,
+  },
+  attachmentImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: radius.md,
+  },
+  voiceBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+  },
+  voiceBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.accentInk,
+  },
+  voicePreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.surfaceMuted,
+    padding: 10,
+    borderRadius: radius.md,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  voicePreviewText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.onSurfaceVariant,
   },
   cardTitle: {
     fontSize: 16,
@@ -525,7 +753,7 @@ const styles = StyleSheet.create({
   cardTagText: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.accent,
   },
   empty: {
     alignItems: 'center',

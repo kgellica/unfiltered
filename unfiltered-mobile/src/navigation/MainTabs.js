@@ -10,11 +10,6 @@ import { colors } from '../theme/theme';
 
 const Tab = createBottomTabNavigator();
 
-// HCI note: only 5 primary destinations are shown in the tab bar (the max
-// comfortably scannable/reachable on a phone). Affirmations now live inline
-// on the Dashboard; Reminders were removed. The 5th tab is now a direct
-// "Profile" destination (was "More") — Edit Profile, User Profile, Change
-// Password, and Theme & Ambience all branch from there.
 const ICONS = {
   Dashboard: Home,
   Journal: BookOpen,
@@ -29,8 +24,7 @@ export default function MainTabs() {
       screenOptions={({ route }) => {
         const Icon = ICONS[route.name];
         return {
-          headerStyle: { backgroundColor: colors.surface, shadowColor: 'transparent', elevation: 0 },
-          headerTitleStyle: { color: colors.onSurface, fontWeight: '700' },
+
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.onSurfaceFaint,
           tabBarStyle: {
@@ -44,14 +38,15 @@ export default function MainTabs() {
             <Icon size={22} color={color} strokeWidth={focused ? 2.4 : 2} />
           ),
           tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
+          headerShown: false,
         };
       }}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Journal" component={JournalScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Journal" component={JournalScreen} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Memories" component={MemoriesScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
