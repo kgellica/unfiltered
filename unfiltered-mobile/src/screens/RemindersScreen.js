@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Platform } from 'react-native';
 import { colors, radius, spacing, pixelShadow } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import { ChevronLeft, ChevronRight, Bell, Check, Sunrise, Moon, Sparkles } from 'lucide-react-native';
 
 const PROMPT_IDEAS = [
@@ -35,6 +36,8 @@ function TimeStepper({ value, onChange, disabled }) {
 }
 
 export default function RemindersScreen() {
+  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const [morningEnabled, setMorningEnabled] = useState(true);
   const [eveningEnabled, setEveningEnabled] = useState(true);
   const [morningTime, setMorningTime] = useState('08:30');
@@ -145,7 +148,7 @@ const stepperStyles = StyleSheet.create({
   },
 });
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     paddingHorizontal: spacing.gutter,

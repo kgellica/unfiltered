@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput, Alert, ScrollView, Pressable } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { changePassword } from '../api/auth';
 import PixelButton from '../components/PixelButton';
 import { colors, radius, spacing } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 // Small labeled password field with an eye icon to toggle visibility.
-function PasswordField({ label, value, onChangeText, placeholder }) {
+// Takes `styles` as a prop so it always uses the parent's live, theme-aware styles.
+function PasswordField({ label, value, onChangeText, placeholder, styles }) {
   const [visible, setVisible] = useState(false);
   return (
     <>
@@ -40,6 +42,9 @@ function PasswordField({ label, value, onChangeText, placeholder }) {
 }
 
 export default function ChangePasswordScreen({ navigation }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -89,6 +94,7 @@ export default function ChangePasswordScreen({ navigation }) {
         value={currentPassword}
         onChangeText={setCurrentPassword}
         placeholder="••••••••"
+        styles={styles}
       />
 
       <PasswordField
@@ -96,6 +102,7 @@ export default function ChangePasswordScreen({ navigation }) {
         value={newPassword}
         onChangeText={setNewPassword}
         placeholder="at least 8 characters"
+        styles={styles}
       />
 
       <PasswordField
@@ -103,6 +110,7 @@ export default function ChangePasswordScreen({ navigation }) {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         placeholder="re-enter new password"
+        styles={styles}
       />
 
       {!!error && <Text style={styles.errorText}>{error}</Text>}
@@ -112,7 +120,7 @@ export default function ChangePasswordScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: { padding: spacing.gutter, paddingBottom: 48 },
   fieldLabel: { fontSize: 11, fontWeight: '800', color: colors.onSurfaceVariant, letterSpacing: 0.6, marginTop: 16, marginBottom: 8 },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
 import { colors, radius, cardShadow } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function PixelButton({
   title,
@@ -12,7 +13,9 @@ export default function PixelButton({
   textStyle,
   icon, // optional React node (e.g. a lucide icon or <GoogleIcon />) rendered before the label
 }) {
+  useTheme(); // subscribe so styles rebuild (below) with the current accent/mode
   const isPrimary = variant === 'primary';
+  const styles = createStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -43,7 +46,7 @@ export default function PixelButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   base: {
     borderRadius: radius.lg,
     paddingVertical: 14,

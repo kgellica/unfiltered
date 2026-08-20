@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView, Platform, 
 import { useFocusEffect } from '@react-navigation/native';
 import { getEntriesByMonth } from '../api/entries';
 import { colors, radius, spacing } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react-native';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -51,6 +52,8 @@ function formatReflectionHeader(dateStr) {
 }
 
 export default function CalendarScreen({ navigation }) {
+  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const [cursor, setCursor] = useState(new Date());
   const [entriesByDate, setEntriesByDate] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
@@ -135,6 +138,7 @@ export default function CalendarScreen({ navigation }) {
           <Text style={styles.headerTitle}>Calendar</Text>
         </View>
 
+        <View style={styles.content}>
         <View style={styles.header}>
           <Pressable onPress={goPrevMonth} hitSlop={16} style={styles.navBtn} accessibilityLabel="Previous month">
             <ChevronLeft size={22} color={colors.accent} strokeWidth={2.4} />
@@ -229,6 +233,7 @@ export default function CalendarScreen({ navigation }) {
             </View>
           )}
         </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -236,15 +241,16 @@ export default function CalendarScreen({ navigation }) {
 
 const CELL_SIZE = '14.28%';
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
   },
   flex: { flex: 1 },
-  container: { padding: spacing.gutter, paddingBottom: 40 },
-  
+  container: { paddingBottom: 40 },
+  content: { paddingHorizontal: spacing.gutter },
+
   headerContainer: {
     paddingHorizontal: spacing.gutter,
     paddingTop: 0,

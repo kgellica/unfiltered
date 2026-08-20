@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -16,9 +16,13 @@ import PixelButton from '../components/PixelButton';
 import GoogleIcon from '../components/GoogleIcon';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { colors, spacing } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import { Eye, EyeOff } from 'lucide-react-native';
 
 export default function SignUpScreen({ navigation }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+
   const { register, loginWithGoogle } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -242,7 +246,7 @@ export default function SignUpScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   flex: { 
     flex: 1, 
     backgroundColor: colors.background,

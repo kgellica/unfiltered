@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, ActivityIndicator, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Pencil, User as UserIcon, Lock, Palette, ChevronRight, LogOut, X } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const MENU_ITEMS = [
   { key: 'EditProfile', label: 'Edit Profile', hint: 'Name & profile photo', Icon: Pencil },
@@ -12,6 +13,8 @@ const MENU_ITEMS = [
 ];
 
 export default function ProfileScreen({ navigation }) {
+  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const { user, logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -35,6 +38,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.headerTitle}>Profile</Text>
         </View>
 
+        <View style={styles.content}>
         {/* Identity */}
         <View style={styles.profileSection}>
           <TouchableOpacity
@@ -90,6 +94,7 @@ export default function ProfileScreen({ navigation }) {
           <LogOut size={16} color={colors.error} strokeWidth={2.3} />
           <Text style={styles.logoutText}>Log out</Text>
         </TouchableOpacity>
+        </View>
       </ScrollView>
 
       <Modal visible={showLogoutModal} transparent animationType="fade" onRequestClose={() => setShowLogoutModal(false)}>
@@ -116,14 +121,15 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 0,
   },
-  scrollContent: { paddingHorizontal: spacing.gutter, paddingBottom: 48 },
-  
+  scrollContent: { paddingBottom: 48 },
+  content: { paddingHorizontal: spacing.gutter },
+
   headerContainer: {
     paddingHorizontal: spacing.gutter,
     paddingTop: 0,

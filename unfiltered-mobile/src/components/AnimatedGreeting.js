@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const TYPE_SPEED = 40;
 const SUB_TYPE_SPEED = 25;
@@ -17,6 +18,9 @@ const HOLD_DURATION = 3000;
 const ERASE_SPEED = 15;
 
 export default function AnimatedGreeting({ userName, avatarUrl }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+
   const [index, setIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [displayedSub, setDisplayedSub] = useState('');
@@ -145,7 +149,7 @@ export default function AnimatedGreeting({ userName, avatarUrl }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: {
     paddingVertical: 4,
   },

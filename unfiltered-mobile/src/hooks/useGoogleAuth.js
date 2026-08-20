@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useState } from 'react';
-import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -10,28 +9,36 @@ const discovery = {
   tokenEndpoint: 'https://oauth2.googleapis.com/token',
 };
 
-// IMPORTANT — why this file changed:
-// The old implementation used ResponseType.Token (implicit flow) against
-// EXPO_PUBLIC_GOOGLE_CLIENT_ID, which is a "Web application" OAuth client
-// (the same one unfiltered-web uses with Google Identity Services). Web
-// application clients only allow http(s):// redirect origins — they do NOT
-// accept the app's custom-scheme redirect (unfiltered://...). Google rejects
-// that combination up front with "Access blocked" / Error 400: invalid_request,
-// which is exactly the reported bug.
+// IMPORTANT — why this file changed (again):
+// The previous version used the per-platform "iOS" / "Android" OAuth
+// client types with a plain custom-scheme redirect (unfiltered://redirect).
+// That combination is what Google's server is rejecting with:
+//   "Access blocked: Authorization Error — this app doesn't comply with
+//    Google's OAuth 2.0 policy for keeping apps secure"
+// Reason: "iOS" / "Android" client types in Google Cloud Console don't
+// have a redirect-URI field at all — they authenticate the calling app by
+// bundle ID / package name + SHA-1 fingerprint, not by whatever redirect_uri
+// the app happens to send. Sending an arbitrary custom scheme (unfiltered://)
+// to that client type is exactly the "app not verified for this redirect"
+// case the policy blocks.
 //
-// Fix: use separate native OAuth clients (type "iOS" / "Android" in Google
-// Cloud Console, one per platform, no client secret) with the Authorization
-// Code + PKCE flow. Native clients are allowed to redirect to the app's
-// custom scheme. See unfiltered-mobile/README section on Google Sign-In.
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+// Fix: use the single "Web application" OAuth client
+// (EXPO_PUBLIC_GOOGLE_CLIENT_ID) for the Authorization Code + PKCE flow,
+// and redirect to Google's reserved reverse-domain scheme derived from
+// that client ID:
+//   com.googleusercontent.apps.<CLIENT_ID_PREFIX>:/oauthredirect
+// This exact scheme is the one Google recognizes as a valid installed-app
+// redirect for a Web client (see Google's "OAuth 2.0 for Mobile & Desktop
+// Apps" guide) — it must ALSO be added to that Web client's "Authorized
+// redirect URIs" list in Google Cloud Console, and to app.json's "scheme".
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
-function getClientId() {
-  const shared = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-  if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || shared;
-  if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || shared;
-  // Web/dev fallback (Expo web build) can keep using the web client.
-  return shared;
+// Client IDs look like "710551658590-xxxx.apps.googleusercontent.com" —
+// the reverse-domain scheme uses everything before ".apps.googleusercontent.com".
+function reverseClientIdScheme(clientId) {
+  if (!clientId) return null;
+  const prefix = clientId.replace(/\.apps\.googleusercontent\.com$/, '');
+  return `com.googleusercontent.apps.${prefix}`;
 }
 
 // Reusable Google sign-in hook. Runs the Authorization Code + PKCE flow,
@@ -41,9 +48,12 @@ function getClientId() {
 // contract is unchanged: it still expects a Google *access_token*.
 export function useGoogleAuth({ onSuccess, onError } = {}) {
   const [submitting, setSubmitting] = useState(false);
-  const clientId = getClientId();
+  const clientId = WEB_CLIENT_ID;
+  const scheme = reverseClientIdScheme(clientId);
 
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'unfiltered', path: 'redirect' });
+  const redirectUri = scheme
+    ? AuthSession.makeRedirectUri({ scheme, path: 'oauthredirect' })
+    : undefined;
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -84,7 +94,7 @@ export function useGoogleAuth({ onSuccess, onError } = {}) {
         const code = response.error?.code || response.params?.error;
         const hint =
           code === 'invalid_request' || code === 'access_denied'
-            ? ' Your Google OAuth client is probably set up as a "Web application" client — native apps need a separate iOS/Android OAuth client (no secret) in Google Cloud Console for this redirect to be accepted.'
+            ? ' Make sure this exact redirect URI is added under "Authorized redirect URIs" on the Web OAuth client in Google Cloud Console: ' + redirectUri
             : '';
         onError?.(new Error((response.error?.message || 'Google sign-in failed.') + hint));
       }
@@ -94,11 +104,11 @@ export function useGoogleAuth({ onSuccess, onError } = {}) {
 
   const signIn = useCallback(() => {
     if (!clientId) {
-      onError?.(new Error('Missing EXPO_PUBLIC_GOOGLE_CLIENT_ID in .env — add your Google OAuth client ID.'));
+      onError?.(new Error('Missing EXPO_PUBLIC_GOOGLE_CLIENT_ID in .env — add your Web OAuth client ID.'));
       return;
     }
     promptAsync();
   }, [promptAsync, onError, clientId]);
 
-  return { signIn, ready: !!request, submitting };
+  return { signIn, ready: !!request, submitting, redirectUri };
 }

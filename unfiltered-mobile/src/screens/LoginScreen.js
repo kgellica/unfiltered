@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,16 @@ import PixelButton from '../components/PixelButton';
 import GoogleIcon from '../components/GoogleIcon';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { colors, spacing } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import { Eye, EyeOff } from 'lucide-react-native';
 
 // Import logo from assets folder - going up two levels
 import Logo from '../../assets/logo.png';
 
 export default function LoginScreen({ navigation }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+
   const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -179,7 +183,7 @@ export default function LoginScreen({ navigation }) {
 
           {/* Primary Action Button */}
           <PixelButton
-            title="Log In →"
+            title="Log In"
             onPress={onSubmit}
             loading={loading}
             style={styles.loginBtn}
@@ -220,7 +224,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   flex: {
     flex: 1,
     backgroundColor: colors.background,

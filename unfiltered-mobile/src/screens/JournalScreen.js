@@ -14,10 +14,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import DatePicker from 'react-native-date-picker'; // ✅ Crash-Proof JS Picker
 import { listEntries, getStats } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
-import { Plus, Search, X, Sparkles, ChevronDown, Calendar, Tag, Check, Mic, CalendarDays } from 'lucide-react-native';
+import { useTheme } from '../context/ThemeContext';
+import { Plus, Search, X, Sparkles, ChevronDown, Calendar, Tag, Check, Mic, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import StreakBar from '../components/StreakBar';
 
@@ -65,7 +65,100 @@ function formatDateAndTime(dateVal, createdAt) {
   return `${dateLabel} \u2022 ${timeLabel}`;
 }
 
+const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+// ✅ Pure-JS calendar grid — no native module, so it works in Expo Go,
+// a custom dev client, and a production build without any extra config.
+function MonthCalendar({ visibleMonth, onChangeMonth, selectedKey, onSelectDay }) {
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const startWeekday = firstOfMonth.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const todayKey = toDateKey(new Date());
+  const isCurrentOrFutureMonth = (() => {
+    const now = new Date();
+    return year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth());
+  })();
+
+  const cells = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(day);
+
+  const rows = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+
+  return (
+    <View>
+      <View style={calStyles.header}>
+        <Pressable
+          hitSlop={8}
+          onPress={() => onChangeMonth(new Date(year, month - 1, 1))}
+          style={calStyles.navBtn}
+          accessibilityLabel="Previous month"
+        >
+          <ChevronLeft size={18} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+        </Pressable>
+        <Text style={calStyles.headerLabel}>
+          {firstOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </Text>
+        <Pressable
+          hitSlop={8}
+          onPress={() => !isCurrentOrFutureMonth && onChangeMonth(new Date(year, month + 1, 1))}
+          style={[calStyles.navBtn, isCurrentOrFutureMonth && calStyles.navBtnDisabled]}
+          disabled={isCurrentOrFutureMonth}
+          accessibilityLabel="Next month"
+        >
+          <ChevronRight size={18} color={isCurrentOrFutureMonth ? colors.onSurfaceFaint : colors.onSurfaceVariant} strokeWidth={2.4} />
+        </Pressable>
+      </View>
+
+      <View style={calStyles.weekRow}>
+        {WEEKDAY_LABELS.map((w, i) => (
+          <Text key={`${w}-${i}`} style={calStyles.weekLabel}>{w}</Text>
+        ))}
+      </View>
+
+      {rows.map((row, ri) => (
+        <View key={ri} style={calStyles.weekRow}>
+          {row.map((day, ci) => {
+            if (day === null) return <View key={ci} style={calStyles.dayCell} />;
+            const cellDate = new Date(year, month, day);
+            const cellKey = toDateKey(cellDate);
+            const isFuture = cellDate.getTime() > new Date().setHours(23, 59, 59, 999);
+            const isSelected = cellKey === selectedKey;
+            const isToday = cellKey === todayKey;
+            return (
+              <Pressable
+                key={ci}
+                style={[calStyles.dayCell, isSelected && calStyles.dayCellSelected]}
+                onPress={() => !isFuture && onSelectDay(cellKey)}
+                disabled={isFuture}
+                accessibilityLabel={`Select ${cellKey}`}
+              >
+                <Text
+                  style={[
+                    calStyles.dayText,
+                    isFuture && calStyles.dayTextDisabled,
+                    isToday && !isSelected && calStyles.dayTextToday,
+                    isSelected && calStyles.dayTextSelected,
+                  ]}
+                >
+                  {day}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function JournalScreen({ navigation }) {
+  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const { user } = useAuth();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,9 +169,9 @@ export default function JournalScreen({ navigation }) {
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
 
-  // ✅ NEW CRASH-PROOF DATE PICKER STATE
-  const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(new Date());
+  // ✅ Custom pure-JS calendar state (no native picker dependency)
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(new Date());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -159,18 +252,24 @@ export default function JournalScreen({ navigation }) {
   const handlePresetPress = (dateKey) => {
     setSelectedDate(dateKey);
     setDateMenuOpen(false);
+    setCalendarOpen(false);
   };
 
-  const handleDateConfirm = (selectedDateObj) => {
-    setOpen(false);
-    setDate(selectedDateObj);
-    const formattedKey = toDateKey(selectedDateObj);
-    setSelectedDate(formattedKey);
+  const handleDaySelect = (dateKey) => {
+    setSelectedDate(dateKey);
+    setCalendarOpen(false);
     setDateMenuOpen(false);
   };
 
   const openDatePicker = () => {
-    setOpen(true);
+    // Jump the calendar to whatever month is currently selected (or today)
+    if (selectedDate) {
+      const [y, m, d] = selectedDate.split('-').map(Number);
+      setVisibleMonth(new Date(y, m - 1, 1));
+    } else {
+      setVisibleMonth(new Date());
+    }
+    setCalendarOpen(true);
   };
 
   return (
@@ -211,6 +310,7 @@ export default function JournalScreen({ navigation }) {
             onPress={() => setDateMenuOpen(true)}
             accessibilityRole="button"
             accessibilityLabel="Filter by date"
+            hitSlop={6}
           >
             <Calendar size={13} color={selectedDate ? colors.accentInk : colors.onSurfaceVariant} strokeWidth={2.2} />
             <Text style={[styles.filterPillText, selectedDate && styles.filterPillTextActive]}>{selectedDateLabel}</Text>
@@ -222,6 +322,7 @@ export default function JournalScreen({ navigation }) {
             onPress={() => setTagMenuOpen(true)}
             accessibilityRole="button"
             accessibilityLabel="Filter by tag"
+            hitSlop={6}
           >
             <Tag size={13} color={selectedTag ? colors.accentInk : colors.onSurfaceVariant} strokeWidth={2.2} />
             <Text style={[styles.filterPillText, selectedTag && styles.filterPillTextActive]}>{selectedTagLabel}</Text>
@@ -229,14 +330,25 @@ export default function JournalScreen({ navigation }) {
           </Pressable>
 
           {hasFilters && (
-            <Pressable onPress={() => { setQuery(''); setSelectedTag(''); setSelectedDate(''); }} style={styles.clearFilters}>
-              <Text style={styles.clearFiltersText}>clear ✕</Text>
+            <Pressable
+              onPress={() => { setQuery(''); setSelectedTag(''); setSelectedDate(''); }}
+              style={styles.clearFilters}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Clear filters"
+            >
+              <Text style={styles.clearFiltersText}>Clear</Text>
             </Pressable>
           )}
         </View>
 
-        <Modal visible={dateMenuOpen} transparent animationType="fade" onRequestClose={() => setDateMenuOpen(false)}>
-          <Pressable style={styles.menuOverlay} onPress={() => setDateMenuOpen(false)}>
+        <Modal
+          visible={dateMenuOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => { setDateMenuOpen(false); setCalendarOpen(false); }}
+        >
+          <Pressable style={styles.menuOverlay} onPress={() => { setDateMenuOpen(false); setCalendarOpen(false); }}>
             <View style={styles.menuSheet}>
               
               <View style={styles.dateModalHeader}>
@@ -282,23 +394,20 @@ export default function JournalScreen({ navigation }) {
                 <Calendar size={18} color={colors.onSurfaceVariant} strokeWidth={2} />
               </TouchableOpacity>
 
+              {calendarOpen && (
+                <View style={styles.calendarWrap}>
+                  <MonthCalendar
+                    visibleMonth={visibleMonth}
+                    onChangeMonth={setVisibleMonth}
+                    selectedKey={selectedDate}
+                    onSelectDay={handleDaySelect}
+                  />
+                </View>
+              )}
+
             </View>
           </Pressable>
         </Modal>
-
-        {/* ✅ REACT-NATIVE-DATE-PICKER (CRASH PROOF) */}
-        <DatePicker
-          modal
-          open={open}
-          date={date}
-          onConfirm={handleDateConfirm}
-          onCancel={() => {
-            setOpen(false);
-            setDateMenuOpen(false);
-          }}
-          maximumDate={new Date()}
-          mode="date"
-        />
 
         <Modal visible={tagMenuOpen} transparent animationType="fade" onRequestClose={() => setTagMenuOpen(false)}>
           <Pressable style={styles.menuOverlay} onPress={() => setTagMenuOpen(false)}>
@@ -438,7 +547,7 @@ export default function JournalScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -612,6 +721,12 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     fontWeight: '500',
   },
+  calendarWrap: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+  },
 
   menuTitle: {
     fontSize: 12,
@@ -771,5 +886,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurfaceVariant,
     textAlign: 'center',
+  },
+});
+
+const calStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  headerLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.onSurface,
+  },
+  navBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+  },
+  navBtnDisabled: {
+    opacity: 0.4,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weekLabel: {
+    width: 32,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.onSurfaceFaint,
+    marginBottom: 6,
+  },
+  dayCell: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  dayCellSelected: {
+    backgroundColor: colors.accent,
+  },
+  dayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.onSurface,
+  },
+  dayTextDisabled: {
+    color: colors.onSurfaceFaint,
+    opacity: 0.4,
+  },
+  dayTextToday: {
+    color: colors.accent,
+    fontWeight: '800',
+  },
+  dayTextSelected: {
+    color: colors.accentInk,
+    fontWeight: '800',
   },
 });

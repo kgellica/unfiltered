@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Flame, Check } from 'lucide-react-native';
 import { colors, radius } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const WEEKDAY_LABELS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -10,6 +11,9 @@ function toKey(d) {
 }
 
 export default function StreakBar({ streak = 0, entryDateSet }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+
   const today = new Date();
   const dow = today.getDay();
   const mondayOffset = dow === 0 ? -6 : 1 - dow;
@@ -82,7 +86,7 @@ export default function StreakBar({ streak = 0, entryDateSet }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   card: {
     borderRadius: radius.xl,
     paddingVertical: 20,

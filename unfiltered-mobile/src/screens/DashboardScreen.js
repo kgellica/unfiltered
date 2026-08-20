@@ -15,7 +15,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NotebookPen, CalendarCheck, Flame } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { getEntriesByMonth, getStats } from '../api/entries';
-import { colors } from '../theme/theme';
+import { colors, spacing, radius } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import Svg, { Path, G, Circle } from 'react-native-svg';
 import AnimatedGreeting from '../components/AnimatedGreeting';
 import InlineAffirmation from '../components/InlineAffirmation';
@@ -173,7 +174,7 @@ const MONTH_ICONS = {
   ),
 };
 
-function BookmarkTab() {
+function BookmarkTab({ styles }) {
   const pop = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -202,7 +203,7 @@ function BookmarkTab() {
   );
 }
 
-function BookItem({ item, isSelected, onPress, disabled, monthIndex }) {
+function BookItem({ item, isSelected, onPress, disabled, monthIndex, styles }) {
   const anim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
 
   React.useEffect(() => {
@@ -236,7 +237,7 @@ function BookItem({ item, isSelected, onPress, disabled, monthIndex }) {
           },
         ]}
       >
-        {isSelected && <BookmarkTab />}
+        {isSelected && <BookmarkTab styles={styles} />}
         <View style={[styles.iconBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
           {IconComponent()}
         </View>
@@ -251,6 +252,8 @@ function BookItem({ item, isSelected, onPress, disabled, monthIndex }) {
 }
 
 export default function DashboardScreen({ navigation }) {
+  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const { user } = useAuth();
   const [forceRefresh, setForceRefresh] = useState(0);
 
@@ -351,6 +354,7 @@ export default function DashboardScreen({ navigation }) {
                     monthIndex={idx}
                     isSelected={selectedMonthIdx === idx}
                     onPress={() => setSelectedMonthIdx(idx)}
+                    styles={styles}
                   />
                 ))}
               </ScrollView>
@@ -433,7 +437,7 @@ export default function DashboardScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: { 
     flex: 1, 
     backgroundColor: colors.background,
@@ -441,13 +445,13 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.gutter,
     paddingBottom: 40,
   },
-  
+
   greetingWrapper: {
-    marginTop: 20,
-    marginBottom: 16,
+    marginTop: spacing.gutter,
+    marginBottom: spacing.gutter,
   },
 
   toggleWrapper: { alignItems: 'center', marginBottom: 12 },
@@ -601,8 +605,15 @@ const styles = StyleSheet.create({
   metricSubLabel: { fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '800', color: colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 2 },
   metricValText: { fontSize: 15, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '700', color: colors.onBackground },
   cardFooter: { alignItems: 'flex-end', marginTop: 6 },
-  newEntryBtn: { backgroundColor: colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14 },
-  newEntryBtnText: { color: colors.accentInk, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
+  newEntryBtn: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: radius.lg,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  newEntryBtnText: { color: colors.accentInk, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
   affirmationWrapper: {
     marginTop: 16,
     alignItems: 'center',

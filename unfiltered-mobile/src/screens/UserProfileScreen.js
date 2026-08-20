@@ -1,14 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Mail, CalendarDays, NotebookPen, Flame, Sparkles } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { getStats } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 // Read-only view of the account: who you are + a quick snapshot of your
 // journaling stats. Editing lives on the separate "Edit Profile" screen.
 export default function UserProfileScreen() {
+  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const { user } = useAuth();
   const [stats, setStats] = useState({ total_entries: 0, current_streak: 0, total_tags: 0 });
 
@@ -76,7 +79,7 @@ export default function UserProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: { padding: spacing.gutter, paddingBottom: 48 },
   identityCard: {

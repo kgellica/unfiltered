@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Animated } from 'react-native';
 import { Sun, Moon, Coffee, Crown, Check, Save } from 'lucide-react-native';
 import { useTheme, ACCENT_PRESETS } from '../context/ThemeContext';
@@ -6,6 +6,7 @@ import { colors, radius, spacing } from '../theme/theme';
 
 export default function ThemeAmbienceScreen({ navigation }) {
   const { mode, setMode, accent, setAccent, customAccent, setCustomAccent, isPremium, togglePremium } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const [hexDraft, setHexDraft] = useState(customAccent);
   const [dirty, setDirty] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -145,7 +146,7 @@ export default function ThemeAmbienceScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: { padding: spacing.gutter, paddingBottom: 48 },
   label: { fontSize: 12, fontWeight: '800', color: colors.onSurfaceVariant, marginBottom: 12, letterSpacing: 0.4 },

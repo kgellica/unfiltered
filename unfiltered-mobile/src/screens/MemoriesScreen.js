@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Images, Camera, Mic, Calendar, Sparkles } from 'lucide-react-native';
 import { listEntries } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const FILTERS = [
   { key: 'all', label: 'All', Icon: Images },
@@ -41,6 +42,8 @@ function formatDateDisplay(dateStr) {
 }
 
 export default function MemoriesScreen({ navigation }) {
+  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -288,7 +291,7 @@ export default function MemoriesScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

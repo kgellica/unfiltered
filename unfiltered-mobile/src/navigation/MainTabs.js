@@ -11,7 +11,7 @@ import { colors } from '../theme/theme';
 const Tab = createBottomTabNavigator();
 
 const ICONS = {
-  Dashboard: Home,
+  Home: Home,
   Journal: BookOpen,
   Calendar: CalendarDays,
   Memories: Images,
@@ -42,7 +42,7 @@ export default function MainTabs() {
         };
       }}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Home" component={DashboardScreen} />
       <Tab.Screen name="Journal" component={JournalScreen} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Memories" component={MemoriesScreen} />

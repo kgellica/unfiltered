@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -18,6 +18,7 @@ import { createEntry, updateEntry, deleteEntry } from '../api/entries';
 import { uploadFile } from '../api/uploads';
 import PixelButton from '../components/PixelButton';
 import { colors, radius, spacing } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
 
 const MOOD_META = {
@@ -35,6 +36,9 @@ const SUGGESTED_TAGS = [
 ];
 
 export default function NewEntryScreen({ route, navigation }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+
   const entryId = route.params?.entryId;
   const initialDate = route.params?.date || new Date().toISOString().slice(0, 10);
   const isEditing = !!entryId;
@@ -440,7 +444,7 @@ export default function NewEntryScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   center: { justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, color: colors.onSurfaceVariant, fontSize: 14 },

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { RefreshCw, Heart, Copy, Check } from 'lucide-react-native';
 import { colors, radius } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const AFFIRMATION_PRESETS = [
   'i am worthy of peace, joy, and gentle days. 🌸',
@@ -20,6 +21,8 @@ const FAV_KEY = 'uf_fav_affirmations';
 // modal — so it reads as a small daily-ritual card rather than an
 // interruption.
 export default function InlineAffirmation() {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
   const [index, setIndex] = useState(() => Math.floor(Math.random() * AFFIRMATION_PRESETS.length));
   const [copied, setCopied] = useState(false);
   const [favorites, setFavorites] = useState([]);
@@ -108,7 +111,7 @@ export default function InlineAffirmation() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: radius.xl,

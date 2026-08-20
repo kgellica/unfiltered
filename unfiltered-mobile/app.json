@@ -2,7 +2,7 @@
   "expo": {
     "name": "unfiltered-mobile",
     "slug": "unfiltered-mobile",
-    "scheme": "unfiltered",
+    "scheme": ["unfiltered", "com.googleusercontent.apps.710551658590-sgvetrs8j2q1qprrbi2l1fp8j98d01u4"],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
