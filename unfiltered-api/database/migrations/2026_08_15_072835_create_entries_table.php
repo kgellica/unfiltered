@@ -6,29 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-   public function up(): void
-{
-    Schema::create('entries', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('user_id')->constrained()->onDelete('cascade');
-        $table->string('title')->nullable();
-        $table->text('content');
-        $table->enum('mood', ['great', 'good', 'okay', 'low', 'sad'])->default('okay');
-        $table->string('bg_color', 7)->default('#FFFFFF'); // Hex color code
-        $table->date('entry_date');
-        $table->timestamps();
+    public function up(): void
+    {
+        Schema::create('entries', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('title')->nullable();
+            $table->longText('content')->nullable();
+            $table->string('mood')->default('okay');
+            $table->string('bg_color', 7)->default('#FFFFFF');
+            $table->string('photo_path')->nullable();
+            $table->string('voice_path')->nullable();
+            $table->json('stickers')->nullable();
+            $table->date('entry_date');
+            $table->timestamps();
 
-        // Index for faster queries on date ranges per user
-        $table->index(['user_id', 'entry_date']);
-    });
-}
+            $table->index(['user_id', 'entry_date']);
+        });
+    }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('entries');
