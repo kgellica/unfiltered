@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="186e1f37-3783-4dd5-bcf2-2ded8d1d5afb" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../unfiltered-api/app/Http/Controllers/EntryController.php" beforeDir="false" afterPath="$PROJECT_DIR$/../unfiltered-api/app/Http/Controllers/EntryController.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../unfiltered-api/app/Models/Entry.php" beforeDir="false" afterPath="$PROJECT_DIR$/../unfiltered-api/app/Models/Entry.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../unfiltered-api/app/Models/Tag.php" beforeDir="false" afterPath="$PROJECT_DIR$/../unfiltered-api/app/Models/Tag.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../unfiltered-api/app/Models/User.php" beforeDir="false" afterPath="$PROJECT_DIR$/../unfiltered-api/app/Models/User.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../unfiltered-api/composer.json" beforeDir="false" afterPath="$PROJECT_DIR$/../unfiltered-api/composer.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../unfiltered-api/composer.lock" beforeDir="false" afterPath="$PROJECT_DIR$/../unfiltered-api/composer.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../unfiltered-api/routes/api.php" beforeDir="false" afterPath="$PROJECT_DIR$/../unfiltered-api/routes/api.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/App.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/app.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/entries.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/entries.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/uploads.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/uploads.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/AnimatedGreeting.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/AnimatedGreeting.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/InlineAffirmation.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/InlineAffirmation.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/StreakBar.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/StreakBar.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/ThemeContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/ThemeContext.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/navigation/MainTabs.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/navigation/MainTabs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AffirmationsScreen.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/CalendarScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/CalendarScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/DashboardScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/DashboardScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/EditProfileScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/EditProfileScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/JournalScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/JournalScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/MemoriesScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MemoriesScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/NewEntryScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/NewEntryScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/ProfileScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/ProfileScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/UserProfileScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/UserProfileScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/theme/theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/theme/theme.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 7
+}]]></component>
+  <component name="ProjectId" id="3I65nQsTfMYNNtmrogz7VtM9S59" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "feature/update-web",
+    "last_opened_file_path": "C:/Users/Administrator/Documents/unfiltered-clone/unfiltered/unfiltered-mobile"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="186e1f37-3783-4dd5-bcf2-2ded8d1d5afb" name="Changes" comment="" />
+      <created>1787072351381</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1787072351381</updated>
+    </task>
+    <servers />
+  </component>
+</project>
