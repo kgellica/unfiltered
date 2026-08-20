@@ -24,6 +24,18 @@ class EntryController extends Controller
             });
         }
 
+        // Filter by specific date (YYYY-MM-DD)
+        if ($request->has('date')) {
+            $query->whereDate('entry_date', $request->date);
+        }
+
+        // Filter by month (YYYY-MM)
+        if ($request->has('month')) {
+            $query->where('entry_date', 'like', $request->month . '%');
+        }
+
+        // ==========================================
+
         return response()->json([
             'entries' => $query->get()
         ]);
@@ -40,6 +52,8 @@ class EntryController extends Controller
             'mood' => 'required|in:great,good,okay,low,sad',
             'bg_color' => 'nullable|string|max:7',
             'entry_date' => 'required|date',
+            'photo_path' => 'nullable|string',
+            'voice_path' => 'nullable|string',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
         ]);
@@ -50,6 +64,8 @@ class EntryController extends Controller
             'mood' => $validated['mood'],
             'bg_color' => $validated['bg_color'] ?? '#FFFFFF',
             'entry_date' => $validated['entry_date'],
+            'photo_path' => $validated['photo_path'] ?? null,
+            'voice_path' => $validated['voice_path'] ?? null,
         ]);
 
         // Process tags if provided
@@ -101,6 +117,8 @@ class EntryController extends Controller
             'mood' => 'required|in:great,good,okay,low,sad',
             'bg_color' => 'nullable|string|max:7',
             'entry_date' => 'required|date',
+            'photo_path' => 'nullable|string',
+            'voice_path' => 'nullable|string',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
         ]);
@@ -111,6 +129,8 @@ class EntryController extends Controller
             'mood' => $validated['mood'],
             'bg_color' => $validated['bg_color'] ?? '#FFFFFF',
             'entry_date' => $validated['entry_date'],
+            'photo_path' => $validated['photo_path'] ?? null,
+            'voice_path' => $validated['voice_path'] ?? null,
         ]);
 
         if (isset($validated['tags'])) {
@@ -153,7 +173,7 @@ class EntryController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         // Fetch unique dates user made an entry, sorted descending
         $dates = $user->entries()
             ->selectRaw('DATE(entry_date) as date')

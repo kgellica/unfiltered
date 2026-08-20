@@ -18,6 +18,8 @@ class Entry extends Model
         'mood',
         'bg_color',
         'entry_date',
+        'photo_path',
+        'voice_path',
     ];
 
     protected $casts = [
