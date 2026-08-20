@@ -126,31 +126,28 @@ export default function TopBar({
             <div className="grid grid-cols-3 gap-1.5 mb-3">
               <button
                 onClick={() => handleSelectDatePreset('all')}
-                className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${
-                  !date
+                className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${!date
                     ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
                     : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
-                }`}
+                  }`}
               >
                 all
               </button>
               <button
                 onClick={() => handleSelectDatePreset('today')}
-                className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${
-                  date === getTodayStr()
+                className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${date === getTodayStr()
                     ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
                     : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
-                }`}
+                  }`}
               >
                 today
               </button>
               <button
                 onClick={() => handleSelectDatePreset('yesterday')}
-                className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${
-                  date === getYesterdayStr()
+                className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${date === getYesterdayStr()
                     ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
                     : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
-                }`}
+                  }`}
               >
                 yesterday
               </button>
@@ -206,18 +203,17 @@ export default function TopBar({
                 onTagChange('');
                 setTagOpen(false);
               }}
-              className={`w-full text-left px-3 py-2 rounded-xl text-[13px] font-semibold transition ${
-                !selectedTag
+              className={`w-full text-left px-3 py-2 rounded-xl text-[13px] font-semibold transition ${!selectedTag
                   ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
                   : 'text-[var(--ink-soft)] hover:bg-[var(--surface-muted)]'
-              }`}
+                }`}
             >
               #all tags
             </button>
 
             {tags.length === 0 ? (
               <p className="px-3 py-3 text-[12px] text-center text-[var(--ink-faint)]">
-                no tags yet 🏷️
+                no tags yet
               </p>
             ) : (
               <div className="mt-1 space-y-1">
@@ -228,11 +224,10 @@ export default function TopBar({
                       onTagChange(t);
                       setTagOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 rounded-xl text-[13px] font-semibold truncate transition flex items-center justify-between ${
-                      selectedTag === t
+                    className={`w-full text-left px-3 py-1.5 rounded-xl text-[13px] font-semibold truncate transition flex items-center justify-between ${selectedTag === t
                         ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
                         : 'text-[var(--ink)] hover:bg-[var(--surface-muted)]'
-                    }`}
+                      }`}
                   >
                     <span>#{t}</span>
                     {selectedTag === t && <Sparkles size={13} />}
