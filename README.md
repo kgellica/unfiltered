@@ -16,9 +16,9 @@ CCE 106L – Applications Development and Emerging Technologies
 
 ```text
 unfiltered/
-├── unfiltered-api/       # Laravel Sanctum RESTful API & MySQL Database
-├── unfiltered-web/       # React (Vite) + Tailwind CSS Web Client
-└── unfiltered-mobile/    # React Native (Expo Router) Mobile Application
+├── backend/           # Laravel Sanctum RESTful API & MySQL Database
+├── web/               # React (Vite) + Tailwind CSS Web Client
+└── mobile/            # React Native (Expo Router) Mobile Application
 ```
 
 ## Features
@@ -30,20 +30,20 @@ unfiltered/
 
 ## Tech Stack
 
-### Backend — `unfiltered-api`
+### Backend — `backend`
 
 * **Framework:** Laravel 11
 * **Authentication:** Laravel Sanctum & Laravel Socialite
 * **Database:** MySQL
 
-### Web Frontend — `unfiltered-web`
+### Web Frontend — `web`
 
 * **Framework:** React + Vite
 * **Styling:** Tailwind CSS & Lucide Icons
 * **OAuth:** `@react-oauth/google`
 * **HTTP Client:** Axios
 
-### Mobile App — `unfiltered-mobile`
+### Mobile App — `mobile`
 
 * **Framework:** React Native + Expo (Expo Router)
 * **Styling:** React Native Stylesheets & Themed Components
