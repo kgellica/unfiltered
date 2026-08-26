@@ -107,7 +107,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* 📚 Bookshelf Monthly Overview Container */}
+        {/* Bookshelf Monthly Overview Container */}
         <div
           className="w-full rounded-3xl p-6 md:p-8 flex flex-col gap-6 shadow-sm relative"
           style={{
