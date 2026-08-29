@@ -16,6 +16,7 @@ import { Images, Camera, Mic, Calendar, Sparkles } from 'lucide-react-native';
 import { listEntries } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
+import RemindersHeaderButton from '../components/RemindersHeaderButton';
 
 const FILTERS = [
   { key: 'all', label: 'All', Icon: Images },
@@ -25,24 +26,70 @@ const FILTERS = [
 
 function monthKeyOf(dateStr) {
   if (!dateStr) return '';
-  return String(dateStr).slice(0, 7);
+  const str = String(dateStr);
+  // Only return if it matches YYYY-MM format
+  if (str.length >= 7) {
+    return str.slice(0, 7);
+  }
+  return '';
 }
 
 function monthLabelOf(key) {
   if (!key) return '';
-  const [y, m] = key.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const parts = String(key).split('-').map(Number);
+  if (parts.length !== 2 || parts.some(isNaN)) return '';
+  const [y, m] = parts;
+  try {
+    return new Date(y, m - 1, 1).toLocaleDateString('en-US', { 
+      month: 'long', 
+      year: 'numeric' 
+    });
+  } catch (e) {
+    return '';
+  }
 }
 
 function formatDateDisplay(dateStr) {
   if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-').map(Number);
+  
+  // Try to parse the date string
+  const parts = String(dateStr).split('-').map(Number);
+  
+  // Check if we have valid parts (year, month, day)
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    // Try alternative parsing if the date is in a different format
+    try {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric' 
+        });
+      }
+    } catch (e) {
+      console.log('Date parsing error:', e);
+    }
+    return '';
+  }
+  
+  const [y, m, d] = parts;
   const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+  
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
 }
 
 export default function MemoriesScreen({ navigation }) {
-  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const { mode, accent } = useTheme();
   const styles = useMemo(() => createStyles(), [mode, accent]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +107,11 @@ export default function MemoriesScreen({ navigation }) {
         const withVoice = data.filter(e => e.voice_path);
         console.log('Entries with photos:', withPhotos.length);
         console.log('Entries with voice:', withVoice.length);
+        
+        // Debug: Log first entry date
+        if (data[0]) {
+          console.log('First entry date:', data[0].entry_date);
+        }
       }
       
       const uniqueMap = {};
@@ -140,7 +192,7 @@ export default function MemoriesScreen({ navigation }) {
             onPress={() => navigation.navigate('NewEntry')}
             style={styles.createFirstBtn}
           >
-            <Text style={styles.createFirstBtnText}>create your first entry →</Text>
+            <Text style={styles.createFirstBtnText}>create your first entry</Text>
           </Pressable>
         )}
       </View>
@@ -153,6 +205,7 @@ export default function MemoriesScreen({ navigation }) {
         {/* Custom Header - Perfectly aligned with Journal */}
         <View style={styles.headerContainer}>
           <Text style={styles.headerTitle}>Memories</Text>
+          <RemindersHeaderButton navigation={navigation} />
         </View>
 
         {/* Filter chips */}
@@ -211,6 +264,7 @@ export default function MemoriesScreen({ navigation }) {
             const hasPhoto = !!item.photo_path;
             const hasVoice = !!item.voice_path;
             const plainText = (item.content || '').replace(/<[^>]+>/g, ' ').trim();
+            const formattedDate = formatDateDisplay(item.entry_date);
 
             return (
               <Pressable 
@@ -254,7 +308,7 @@ export default function MemoriesScreen({ navigation }) {
 
                 <View style={styles.cardBody}>
                   <View style={styles.cardTopRow}>
-                    <Text style={styles.cardDate}>{formatDateDisplay(item.entry_date)}</Text>
+                    <Text style={styles.cardDate}>{formattedDate || 'No date'}</Text>
                     {item.mood && (
                       <Text style={styles.cardMood}>{item.mood}</Text>
                     )}
@@ -300,6 +354,9 @@ const createStyles = () => StyleSheet.create({
   flex: { flex: 1 },
 
   headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.gutter,
     paddingTop: 0,
     paddingBottom: 12,

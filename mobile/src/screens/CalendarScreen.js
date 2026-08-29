@@ -5,6 +5,7 @@ import { getEntriesByMonth } from '../api/entries';
 import { colors, radius, spacing } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react-native';
+import RemindersHeaderButton from '../components/RemindersHeaderButton';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -136,6 +137,7 @@ export default function CalendarScreen({ navigation }) {
         
         <View style={styles.headerContainer}>
           <Text style={styles.headerTitle}>Calendar</Text>
+          <RemindersHeaderButton navigation={navigation} />
         </View>
 
         <View style={styles.content}>
@@ -193,7 +195,7 @@ export default function CalendarScreen({ navigation }) {
 
         <Pressable style={styles.createEntryAction} onPress={handleCreateEntry}>
           <Text style={styles.createEntryActionText}>
-            {selectedEntries.length > 0 ? '+ edit entry for this day' : '+ write entry for this day'}
+            {selectedEntries.length > 0 ? '+ new entry' : '+ write entry for this day'}
           </Text>
         </Pressable>
 
@@ -252,6 +254,9 @@ const createStyles = () => StyleSheet.create({
   content: { paddingHorizontal: spacing.gutter },
 
   headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.gutter,
     paddingTop: 0,
     paddingBottom: 12,

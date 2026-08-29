@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
-   
+
     protected $fillable = [
         'name',
         'email',
@@ -27,12 +27,20 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'pin_hash',
+        'otp_hash',
+        'otp_attempts',
+        'otp_expires_at',
+        'pin_attempts',
+        'pin_locked_until',
     ];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'otp_expires_at' => 'datetime',
+            'pin_locked_until' => 'datetime',
             'password' => 'hashed',
         ];
     }

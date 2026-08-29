@@ -4,12 +4,15 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import PinSetupScreen from '../screens/PinSetupScreen';
 import NewEntryScreen from '../screens/NewEntryScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ThemeAmbienceScreen from '../screens/ThemeAmbienceScreen';
+import RemindersScreen from '../screens/RemindersScreen';
 import MainTabs from './MainTabs';
 import { colors } from '../theme/theme';
 
@@ -19,7 +22,9 @@ function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen name="PinSetup" component={PinSetupScreen} />
     </Stack.Navigator>
   );
 }
@@ -44,6 +49,7 @@ function AppStack() {
       <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'User Profile', ...modalHeaderOptions }} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password', ...modalHeaderOptions }} />
       <Stack.Screen name="ThemeAmbience" component={ThemeAmbienceScreen} options={{ title: 'Theme & Ambience', ...modalHeaderOptions }} />
+      <Stack.Screen name="Reminders" component={RemindersScreen} options={{ title: 'Reminders', ...modalHeaderOptions }} />
     </Stack.Navigator>
   );
 }

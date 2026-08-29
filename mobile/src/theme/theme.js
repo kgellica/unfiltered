@@ -47,6 +47,9 @@ export const colors = {
   moodOkay: '#bae6fd',
   moodLow: '#c4b5fd',
   moodSad: '#94a3b8',
+
+  // Used for "requirement met" indicators (e.g. password strength checks)
+  requirementMet: '#4ade80',
 };
 
 // Same 5 presets as unfiltered-web Settings.jsx, plus 'custom' handled separately.

@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Plus, Search, X, Sparkles, ChevronDown, Calendar, Tag, Check, Mic, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import StreakBar from '../components/StreakBar';
+import RemindersHeaderButton from '../components/RemindersHeaderButton';
 
 const MOOD_META = {
   great: { label: 'great', emoji: '😄' },
@@ -278,6 +279,7 @@ export default function JournalScreen({ navigation }) {
         
         <View style={styles.headerContainer}>
           <Text style={styles.headerTitle}>Journal</Text>
+          <RemindersHeaderButton navigation={navigation} />
         </View>
 
         <View style={styles.streakWrapper}>
@@ -556,6 +558,9 @@ const createStyles = () => StyleSheet.create({
   flex: { flex: 1 },
   
   headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.gutter,
     paddingTop: 0, 
     paddingBottom: 12,

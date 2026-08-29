@@ -16,6 +16,7 @@ export default function Memories() {
     closeModal,
     handleSave,
     handleDelete,
+      } = useJournal();
   // Find a random memory or oldest memory for flashback
   const flashbackEntry = useMemo(() => {
     if (entries.length === 0) return null;

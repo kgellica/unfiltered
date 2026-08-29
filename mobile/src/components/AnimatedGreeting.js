@@ -41,11 +41,11 @@ export default function AnimatedGreeting({ userName, avatarUrl }) {
     },
     {
       text: `, happy ${currentDay}!`,
-      sub: `hope your ${currentDay} is treating you kindly. 🌸`,
+      sub: `hope your ${currentDay} is treating you kindly.`,
     },
     {
       text: `'s journal`,
-      sub: 'your safe, cozy space for unfiltered reflections. ☕',
+      sub: 'your safe, cozy space for unfiltered reflections.',
     },
   ];
 

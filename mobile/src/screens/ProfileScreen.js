@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, ActivityIndicator, SafeAreaView, Platform, StatusBar } from 'react-native';
-import { Pencil, User as UserIcon, Lock, Palette, ChevronRight, LogOut, X } from 'lucide-react-native';
+import { Pencil, User as UserIcon, Lock, Palette, BellRing, ChevronRight, LogOut, X } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -10,6 +10,7 @@ const MENU_ITEMS = [
   { key: 'UserProfile', label: 'User Profile', hint: 'Your account details', Icon: UserIcon },
   { key: 'ChangePassword', label: 'Change Password', hint: 'Update your login password', Icon: Lock },
   { key: 'ThemeAmbience', label: 'Theme & Ambience', hint: 'Color mode & accent', Icon: Palette },
+  { key: 'Reminders', label: 'Reminders', hint: 'Daily journaling nudges', Icon: BellRing },
 ];
 
 export default function ProfileScreen({ navigation }) {

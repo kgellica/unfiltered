@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   Plus,
+  FileText,
+  CalendarCheck,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useJournal } from '../hooks/useJournal';
@@ -78,42 +81,6 @@ export default function Home() {
     count: 0,
     activeDays: new Set(),
     entries: [],
-  };
-
-  const openNew = () => {
-    setActiveEntry(null);
-    setShowModal(true);
-  };
-
-  const openEntry = (entry) => {
-    setActiveEntry(entry);
-    setShowModal(true);
-  };
-
-  const closeModal = () => setShowModal(false);
-
-  const handleSave = async (payload) => {
-    try {
-      if (payload.id) {
-        await api.put(`/entries/${payload.id}`, payload);
-      } else {
-        await api.post('/entries', payload);
-      }
-      closeModal();
-      fetchData();
-    } catch (err) {
-      console.error('Failed to save entry:', err);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await api.delete(`/entries/${id}`);
-      closeModal();
-      fetchData();
-    } catch (err) {
-      console.error('Failed to delete entry:', err);
-    }
   };
 
   return (

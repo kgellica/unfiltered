@@ -18,16 +18,52 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            'pin'      => 'required|digits:6',
         ]);
 
         $result = $this->auth->register($validated);
 
         return response()->json([
-            'message'      => 'User registered successfully.',
+            'message'      => 'Account created.',
             'access_token' => $result['token'],
             'token_type'   => 'Bearer',
             'user'         => $result['user'],
         ], 201);
+    }
+
+    public function otpVerify(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|string|email',
+            'otp'   => 'required|digits:6',
+        ]);
+
+        $result = $this->auth->verifyOtp($validated['email'], $validated['otp']);
+
+        return response()->json([
+            'message'      => 'Email verified.',
+            'access_token' => $result['token'],
+            'token_type'   => 'Bearer',
+            'user'         => $result['user'],
+        ]);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email'    => 'required|string|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        try {
+            $this->auth->resetPassword($validated['email'], $validated['password']);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?? 'Could not reset password.',
+            ], 422);
+        }
+
+        return response()->json(['message' => 'Password updated. You can now log in with your new password.']);
     }
 
     public function login(Request $request): JsonResponse
@@ -40,7 +76,41 @@ class AuthController extends Controller
         try {
             $result = $this->auth->login($credentials);
         } catch (ValidationException $e) {
-            return response()->json(['message' => 'Invalid email or password.'], 401);
+            return response()->json(['message' => collect($e->errors())->flatten()->first() ?? 'Invalid email or password.'], $e->status ?? 401);
+        }
+
+        return response()->json([
+            'message'      => 'Login successful.',
+            'access_token' => $result['token'],
+            'token_type'   => 'Bearer',
+            'user'         => $result['user'],
+        ]);
+    }
+
+    public function loginPin(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|string|email',
+            'pin'   => 'required|digits:6',
+        ]);
+
+        try {
+            $result = $this->auth->loginWithPin($validated['email'], $validated['pin']);
+        } catch (ValidationException $e) {
+            // Check if the error is specifically about PIN not being set up
+            $errorMessage = collect($e->errors())->flatten()->first() ?? 'Invalid PIN.';
+
+            // Return a more specific error for PIN not set up
+            if (str_contains($errorMessage, 'PIN is not set up')) {
+                return response()->json([
+                    'message' => 'PIN login is not set up for this account. Please use email and password instead.',
+                    'error_type' => 'pin_not_setup'
+                ], 401);
+            }
+
+            return response()->json([
+                'message' => $errorMessage
+            ], $e->status ?? 401);
         }
 
         return response()->json([

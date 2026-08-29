@@ -17,12 +17,20 @@ const AFFIRMATION_PRESETS = [
 ];
 
 const FAV_KEY = 'uf_fav_affirmations';
+// Shared with RemindersScreen, where the user can add their own daily
+// affirmations — those are merged into this card's rotation.
+export const CUSTOM_AFFIRMATIONS_KEY = 'uf_custom_affirmations';
 
 // modal — so it reads as a small daily-ritual card rather than an
 // interruption.
 export default function InlineAffirmation() {
   const { mode, accent } = useTheme();
   const styles = useMemo(() => createStyles(), [mode, accent]);
+  const [customAffirmations, setCustomAffirmations] = useState([]);
+  const affirmations = useMemo(
+    () => [...AFFIRMATION_PRESETS, ...customAffirmations],
+    [customAffirmations]
+  );
   const [index, setIndex] = useState(() => Math.floor(Math.random() * AFFIRMATION_PRESETS.length));
   const [copied, setCopied] = useState(false);
   const [favorites, setFavorites] = useState([]);
@@ -35,13 +43,20 @@ export default function InlineAffirmation() {
         setFavorites([]);
       }
     });
+    AsyncStorage.getItem(CUSTOM_AFFIRMATIONS_KEY).then((raw) => {
+      try {
+        setCustomAffirmations(raw ? JSON.parse(raw) : []);
+      } catch {
+        setCustomAffirmations([]);
+      }
+    });
   }, []);
 
-  const currentText = AFFIRMATION_PRESETS[index];
+  const currentText = affirmations[index % affirmations.length];
   const isFav = favorites.includes(currentText);
 
   const nextAffirmation = () => {
-    setIndex((prev) => (prev + 1) % AFFIRMATION_PRESETS.length);
+    setIndex((prev) => (prev + 1) % affirmations.length);
     setCopied(false);
   };
 

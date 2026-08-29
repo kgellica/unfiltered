@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Platform } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Switch, Platform, TextInput } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, radius, spacing, pixelShadow } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
-import { ChevronLeft, ChevronRight, Bell, Check, Sunrise, Moon, Sparkles } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Bell, Check, Sunrise, Moon, Sparkles, Plus, X, Heart } from 'lucide-react-native';
+import { CUSTOM_AFFIRMATIONS_KEY } from '../components/InlineAffirmation';
 
 const PROMPT_IDEAS = [
   { prompt: 'what made you smile today, even for a split second? 🌸', tag: 'gratitude' },
@@ -11,6 +13,10 @@ const PROMPT_IDEAS = [
   { prompt: "what is something you accomplished today that you're proud of? ✨", tag: 'wins' },
   { prompt: 'if you could whisper advice to yourself this morning, what would it be? 💌', tag: 'reflection' },
 ];
+
+// Shared with the "daily prompt inspiration" card collection below — the
+// user's own prompts are stored here and merged in alongside the presets.
+const CUSTOM_PROMPTS_KEY = 'uf_custom_prompts';
 
 function TimeStepper({ value, onChange, disabled }) {
   const [h, m] = value.split(':').map(Number);
@@ -44,9 +50,65 @@ export default function RemindersScreen() {
   const [eveningTime, setEveningTime] = useState('21:30');
   const [savedNotice, setSavedNotice] = useState(false);
 
+  const [customAffirmations, setCustomAffirmations] = useState([]);
+  const [newAffirmation, setNewAffirmation] = useState('');
+
+  const [customPrompts, setCustomPrompts] = useState([]);
+  const [newPrompt, setNewPrompt] = useState('');
+  const [newPromptTag, setNewPromptTag] = useState('');
+
+  useEffect(() => {
+    AsyncStorage.getItem(CUSTOM_AFFIRMATIONS_KEY).then((raw) => {
+      try {
+        setCustomAffirmations(raw ? JSON.parse(raw) : []);
+      } catch {
+        setCustomAffirmations([]);
+      }
+    });
+    AsyncStorage.getItem(CUSTOM_PROMPTS_KEY).then((raw) => {
+      try {
+        setCustomPrompts(raw ? JSON.parse(raw) : []);
+      } catch {
+        setCustomPrompts([]);
+      }
+    });
+  }, []);
+
   const handleSave = () => {
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 2500);
+  };
+
+  const addAffirmation = async () => {
+    const text = newAffirmation.trim();
+    if (!text) return;
+    const next = [...customAffirmations, text];
+    setCustomAffirmations(next);
+    setNewAffirmation('');
+    await AsyncStorage.setItem(CUSTOM_AFFIRMATIONS_KEY, JSON.stringify(next));
+  };
+
+  const removeAffirmation = async (text) => {
+    const next = customAffirmations.filter((a) => a !== text);
+    setCustomAffirmations(next);
+    await AsyncStorage.setItem(CUSTOM_AFFIRMATIONS_KEY, JSON.stringify(next));
+  };
+
+  const addPrompt = async () => {
+    const prompt = newPrompt.trim();
+    if (!prompt) return;
+    const tag = newPromptTag.trim() || 'my own';
+    const next = [...customPrompts, { prompt, tag }];
+    setCustomPrompts(next);
+    setNewPrompt('');
+    setNewPromptTag('');
+    await AsyncStorage.setItem(CUSTOM_PROMPTS_KEY, JSON.stringify(next));
+  };
+
+  const removePrompt = async (idx) => {
+    const next = customPrompts.filter((_, i) => i !== idx);
+    setCustomPrompts(next);
+    await AsyncStorage.setItem(CUSTOM_PROMPTS_KEY, JSON.stringify(next));
   };
 
   return (
@@ -110,14 +172,81 @@ export default function RemindersScreen() {
       </View>
 
       <View style={styles.sectionTitleRow}>
+        <Heart size={16} color={colors.accent} strokeWidth={2.2} />
+        <Text style={styles.sectionTitle}>your daily affirmations</Text>
+      </View>
+      <Text style={styles.sectionHint}>add your own — it'll show up in the affirmation card on Home.</Text>
+      <View style={styles.addRow}>
+        <TextInput
+          style={styles.addInput}
+          placeholder="e.g. i am proud of my progress ✨"
+          placeholderTextColor={colors.onSurfaceFaint}
+          value={newAffirmation}
+          onChangeText={setNewAffirmation}
+          onSubmitEditing={addAffirmation}
+          returnKeyType="done"
+        />
+        <Pressable style={styles.addBtn} onPress={addAffirmation} accessibilityRole="button" accessibilityLabel="Add affirmation">
+          <Plus size={18} color={colors.onPrimary} strokeWidth={2.6} />
+        </Pressable>
+      </View>
+      {customAffirmations.map((text, idx) => (
+        <View key={idx} style={styles.customCard}>
+          <Text style={styles.promptText}>"{text}"</Text>
+          <Pressable onPress={() => removeAffirmation(text)} hitSlop={8} accessibilityLabel="Remove affirmation">
+            <X size={16} color={colors.onSurfaceFaint} />
+          </Pressable>
+        </View>
+      ))}
+
+      <View style={styles.sectionTitleRow}>
         <Sparkles size={16} color={colors.accent} strokeWidth={2.2} />
         <Text style={styles.sectionTitle}>daily prompt inspiration</Text>
       </View>
+      <Text style={styles.sectionHint}>add your own journaling prompt to the card collection below.</Text>
+      <View style={styles.addRow}>
+        <TextInput
+          style={styles.addInput}
+          placeholder="e.g. what are you grateful for right now?"
+          placeholderTextColor={colors.onSurfaceFaint}
+          value={newPrompt}
+          onChangeText={setNewPrompt}
+          returnKeyType="next"
+        />
+        <TextInput
+          style={styles.addTagInput}
+          placeholder="tag"
+          placeholderTextColor={colors.onSurfaceFaint}
+          value={newPromptTag}
+          onChangeText={setNewPromptTag}
+          onSubmitEditing={addPrompt}
+          returnKeyType="done"
+        />
+        <Pressable style={styles.addBtn} onPress={addPrompt} accessibilityRole="button" accessibilityLabel="Add prompt">
+          <Plus size={18} color={colors.onPrimary} strokeWidth={2.6} />
+        </Pressable>
+      </View>
+
+      {/* Themed card collection — presets first, then the user's own prompts,
+          all sharing the same card styling so the ambience stays consistent. */}
       {PROMPT_IDEAS.map((item, idx) => (
-        <View key={idx} style={styles.promptCard}>
+        <View key={`preset-${idx}`} style={styles.promptCard}>
           <Text style={styles.promptText}>"{item.prompt}"</Text>
           <View style={styles.promptTag}>
             <Text style={styles.promptTagText}>#{item.tag}</Text>
+          </View>
+        </View>
+      ))}
+      {customPrompts.map((item, idx) => (
+        <View key={`custom-${idx}`} style={styles.promptCard}>
+          <Text style={styles.promptText}>"{item.prompt}"</Text>
+          <View style={styles.promptCardFooter}>
+            <View style={styles.promptTag}>
+              <Text style={styles.promptTagText}>#{item.tag}</Text>
+            </View>
+            <Pressable onPress={() => removePrompt(idx)} hitSlop={8} accessibilityLabel="Remove prompt">
+              <X size={16} color={colors.onSurfaceFaint} />
+            </Pressable>
           </View>
         </View>
       ))}
@@ -252,6 +381,66 @@ const createStyles = () => StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: colors.onSurface,
+  },
+  sectionHint: {
+    fontSize: 11.5,
+    color: colors.onSurfaceVariant,
+    marginTop: -6,
+    marginBottom: 12,
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  addInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  addTagInput: {
+    width: 84,
+    height: 44,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 10,
+    fontSize: 12,
+    color: colors.onSurface,
+  },
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...pixelShadow,
+  },
+  customCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    padding: 14,
+    marginBottom: 10,
+    gap: 8,
+  },
+  promptCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   promptCard: {
     backgroundColor: colors.surface,

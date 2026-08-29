@@ -1,18 +1,46 @@
 import client from './client';
 
-// Exchanges a Google access token for our own app's bearer token.
-// Backend: POST /auth/google -> AuthController@googleLogin
-export const googleLogin = (accessToken) =>
-  client.post('/auth/google', { token: accessToken }).then((r) => r.data);
+// Backend: POST /register -> AuthController@register
+// Creates the account (name/email/password/PIN, collected across SignUpScreen
+// + PinSetupScreen) and returns a Sanctum bearer token immediately — no email
+// verification step.
+export const register = ({ name, email, password, passwordConfirmation, pin }) =>
+  client
+    .post('/register', {
+      name,
+      email,
+      password,
+      password_confirmation: passwordConfirmation,
+      pin,
+    })
+    .then((r) => r.data);
+
+// Backend: POST /login -> AuthController@login (email + password fallback)
+export const login = ({ email, password }) =>
+  client.post('/login', { email, password }).then((r) => r.data);
+
+// Backend: POST /login/pin -> AuthController@loginPin
+export const loginWithPin = ({ email, pin }) =>
+  client.post('/login/pin', { email, pin }).then((r) => r.data);
+
+// Simple, self-service password reset (no email/OTP round trip — the user
+// just proves they know the account email and sets a new password).
+// Backend: POST /password/forgot -> AuthController@forgotPassword
+export const forgotPassword = ({ email, password, passwordConfirmation }) =>
+  client
+    .post('/password/forgot', {
+      email,
+      password,
+      password_confirmation: passwordConfirmation,
+    })
+    .then((r) => r.data);
 
 // Fetches the currently authenticated user.
-// Backend: GET /user -> AuthController@user
-export const getMe = () => client.get('/user').then((r) => r.data);
+// Backend: GET /me -> AuthController@me
+export const getMe = () => client.get('/me').then((r) => r.data);
 
 // Updates the authenticated user's profile (name / email / avatar_url).
 // Backend: PATCH /user/profile -> AuthController@updateProfile
-// Returns the updated user object (not the whole response envelope) so
-// callers can pass it straight into setUser().
 export const updateProfile = (payload) =>
   client.patch('/user/profile', payload).then((r) => r.data.user);
 
@@ -20,3 +48,6 @@ export const updateProfile = (payload) =>
 // Backend: PATCH /user/password -> AuthController@changePassword
 export const changePassword = (payload) =>
   client.patch('/user/password', payload).then((r) => r.data);
+
+// Backend: POST /logout -> AuthController@logout (revokes the current token)
+export const logout = () => client.post('/logout').then((r) => r.data);

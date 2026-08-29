@@ -8,9 +8,10 @@ const api = axios.create({
   },
 });
 
-// Automatically attach Bearer token if it exists in localStorage
+// Automatically attach the Bearer token — it may live in localStorage
+// (remembered sessions) or sessionStorage (unchecked "Remember me").
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

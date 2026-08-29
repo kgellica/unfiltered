@@ -8,12 +8,31 @@ import { useTheme } from '../context/ThemeContext';
 
 // Small labeled password field with an eye icon to toggle visibility.
 // Takes `styles` as a prop so it always uses the parent's live, theme-aware styles.
-function PasswordField({ label, value, onChangeText, placeholder, styles }) {
+function PasswordField({ 
+  label, 
+  value, 
+  onChangeText, 
+  placeholder, 
+  styles,
+  error,
+  onFocus,
+  onBlur,
+  isFocused
+}) {
   const [visible, setVisible] = useState(false);
+  const [localFocused, setLocalFocused] = useState(false);
+  
+  const focused = isFocused !== undefined ? isFocused : localFocused;
+  const hasError = !!error;
+  
   return (
-    <>
+    <View style={styles.inputWrapperContainer}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.inputWrapper}>
+      <View style={[
+        styles.inputWrapper,
+        focused && styles.inputWrapperActive,
+        hasError && styles.inputWrapperError
+      ]}>
         <TextInput
           style={styles.inputWithIcon}
           value={value}
@@ -22,6 +41,14 @@ function PasswordField({ label, value, onChangeText, placeholder, styles }) {
           placeholder={placeholder}
           placeholderTextColor={colors.onSurfaceFaint}
           autoCapitalize="none"
+          onFocus={() => {
+            setLocalFocused(true);
+            if (onFocus) onFocus();
+          }}
+          onBlur={() => {
+            setLocalFocused(false);
+            if (onBlur) onBlur();
+          }}
         />
         <Pressable
           onPress={() => setVisible((v) => !v)}
@@ -37,7 +64,8 @@ function PasswordField({ label, value, onChangeText, placeholder, styles }) {
           )}
         </Pressable>
       </View>
-    </>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
   );
 }
 
@@ -49,20 +77,98 @@ export default function ChangePasswordScreen({ navigation }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  
+  // Focus states
+  const [currentFocused, setCurrentFocused] = useState(false);
+  const [newFocused, setNewFocused] = useState(false);
+  const [confirmFocused, setConfirmFocused] = useState(false);
+  
+  // Error states
+  const [currentError, setCurrentError] = useState('');
+  const [newError, setNewError] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [generalError, setGeneralError] = useState('');
+
+  const validateCurrentPassword = (text) => {
+    setCurrentPassword(text);
+    if (text && text.length > 0 && text.length < 8) {
+      setCurrentError('Password must be at least 8 characters');
+    } else {
+      setCurrentError('');
+    }
+  };
+
+  const validateNewPassword = (text) => {
+    setNewPassword(text);
+    if (text && text.length > 0 && text.length < 8) {
+      setNewError('Password must be at least 8 characters');
+    } else if (text && text.length >= 8) {
+      setNewError('');
+    } else {
+      setNewError('');
+    }
+    
+    // Also validate confirm password if it has content
+    if (confirmPassword && text !== confirmPassword) {
+      setConfirmError('Passwords do not match');
+    } else if (confirmPassword && text === confirmPassword) {
+      setConfirmError('');
+    }
+  };
+
+  const validateConfirmPassword = (text) => {
+    setConfirmPassword(text);
+    if (text && newPassword && text !== newPassword) {
+      setConfirmError('Passwords do not match');
+    } else if (text && newPassword && text === newPassword) {
+      setConfirmError('');
+    } else if (text && !newPassword) {
+      setConfirmError('Please enter a new password first');
+    } else {
+      setConfirmError('');
+    }
+  };
+
+  const isFormValid = () => {
+    return (
+      currentPassword && 
+      currentPassword.length >= 8 &&
+      newPassword && 
+      newPassword.length >= 8 && 
+      confirmPassword && 
+      confirmPassword === newPassword &&
+      !currentError &&
+      !newError &&
+      !confirmError
+    );
+  };
 
   const onSave = async () => {
-    setError('');
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('Please fill in all fields.');
+    setGeneralError('');
+    
+    // Validate each field
+    if (!currentPassword) {
+      setCurrentError('Current password is required');
+      return;
+    }
+    if (currentPassword.length < 8) {
+      setCurrentError('Password must be at least 8 characters');
+      return;
+    }
+    if (!newPassword) {
+      setNewError('New password is required');
       return;
     }
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters.');
+      setNewError('New password must be at least 8 characters');
+      return;
+    }
+    if (!confirmPassword) {
+      setConfirmError('Please confirm your password');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("New passwords don't match.");
+      setConfirmError("Passwords don't match");
       return;
     }
 
@@ -81,64 +187,146 @@ export default function ChangePasswordScreen({ navigation }) {
         e?.response?.data?.errors?.current_password?.[0] ||
         e?.response?.data?.message ||
         'Could not update your password. Please try again.';
-      setError(serverMessage);
+      setGeneralError(serverMessage);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView 
+      style={styles.flex} 
+      contentContainerStyle={styles.container} 
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <Text style={styles.pageSubtitle}>Update your account password</Text>
+
       <PasswordField
         label="CURRENT PASSWORD"
         value={currentPassword}
-        onChangeText={setCurrentPassword}
-        placeholder="••••••••"
+        onChangeText={validateCurrentPassword}
+        placeholder="Enter current password"
         styles={styles}
+        error={currentError}
+        isFocused={currentFocused}
+        onFocus={() => setCurrentFocused(true)}
+        onBlur={() => setCurrentFocused(false)}
       />
 
       <PasswordField
         label="NEW PASSWORD"
         value={newPassword}
-        onChangeText={setNewPassword}
-        placeholder="at least 8 characters"
+        onChangeText={validateNewPassword}
+        placeholder="Enter new password"
         styles={styles}
+        error={newError}
+        isFocused={newFocused}
+        onFocus={() => setNewFocused(true)}
+        onBlur={() => setNewFocused(false)}
       />
 
       <PasswordField
         label="CONFIRM NEW PASSWORD"
         value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        placeholder="re-enter new password"
+        onChangeText={validateConfirmPassword}
+        placeholder="Re-enter new password"
         styles={styles}
+        error={confirmError}
+        isFocused={confirmFocused}
+        onFocus={() => setConfirmFocused(true)}
+        onBlur={() => setConfirmFocused(false)}
       />
 
-      {!!error && <Text style={styles.errorText}>{error}</Text>}
+      {generalError ? <Text style={styles.generalErrorText}>{generalError}</Text> : null}
 
-      <PixelButton title="Update Password" onPress={onSave} loading={saving} style={{ marginTop: 20 }} />
+      <PixelButton 
+        title="Update Password" 
+        onPress={onSave} 
+        loading={saving} 
+        style={[
+          { marginTop: 20 },
+          !isFormValid() && styles.submitBtnDisabled
+        ]}
+        disabled={!isFormValid()}
+      />
     </ScrollView>
   );
 }
 
 const createStyles = () => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.gutter, paddingBottom: 48 },
-  fieldLabel: { fontSize: 11, fontWeight: '800', color: colors.onSurfaceVariant, letterSpacing: 0.6, marginTop: 16, marginBottom: 8 },
+  container: { 
+    padding: spacing.gutter, 
+    paddingBottom: 48,
+    // Removed justifyContent and flexGrow to keep content at top
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.onBackground,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    marginBottom: 28,
+    textAlign: 'center',
+  },
+  inputWrapperContainer: {
+    marginBottom: 0,
+  },
+  fieldLabel: { 
+    fontSize: 12, 
+    fontWeight: '700', 
+    color: colors.onSurfaceVariant, 
+    letterSpacing: 0.6, 
+    marginBottom: 6,
+  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: colors.borderSoft,
-    borderRadius: radius.md,
+    borderRadius: 14,
     backgroundColor: colors.surface,
+  },
+  inputWrapperActive: {
+    borderColor: colors.accent,
+    borderWidth: 2,
+  },
+  inputWrapperError: {
+    borderColor: '#FF3B30',
+    borderWidth: 2,
   },
   inputWithIcon: {
     flex: 1,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 15,
     color: colors.onSurface,
   },
-  eyeButton: { paddingHorizontal: 12, paddingVertical: 12 },
-  errorText: { color: colors.error, fontSize: 12.5, fontWeight: '600', marginTop: 14 },
+  eyeButton: { 
+    paddingHorizontal: 12, 
+    paddingVertical: 12 
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
+    marginLeft: 4,
+    marginBottom: 0,
+  },
+  generalErrorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 14,
+    textAlign: 'center',
+  },
+  submitBtnDisabled: {
+    opacity: 0.5,
+  },
 });

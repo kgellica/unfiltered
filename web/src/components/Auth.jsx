@@ -7,6 +7,7 @@ import logoImg from '../assets/logo.png';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [view, setView] = useState('form'); // 'form' | 'forgot'
   const { login, register } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -15,6 +16,12 @@ export default function Auth() {
     password: '',
     password_confirmation: '',
   });
+  const [rememberMe, setRememberMe] = useState(true);
+
+  const [forgotData, setForgotData] = useState({ email: '', password: '', password_confirmation: '' });
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState(null);
+  const [forgotSuccess, setForgotSuccess] = useState(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -22,6 +29,40 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleForgotChange = (e) => {
+    setForgotData({ ...forgotData, [e.target.name]: e.target.value });
+  };
+
+  // Simple, self-service password reset: no email/OTP round trip — the
+  // user confirms their account email and sets a new password directly.
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    if (forgotData.password.length < 8) {
+      setForgotError('your new password needs to be at least 8 characters. ☁️');
+      return;
+    }
+    if (forgotData.password !== forgotData.password_confirmation) {
+      setForgotError("those passwords don't match. ☁️");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      await api.post('/password/forgot', forgotData);
+      setForgotSuccess('password updated! you can log in with your new password now. 🌸');
+      setForgotData({ email: '', password: '', password_confirmation: '' });
+    } catch (err) {
+      setForgotError(
+        err.response?.data?.message || 'something went wrong. please try again. ☁️'
+      );
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   // Google OAuth Login Handler
@@ -57,7 +98,7 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
+        await login(formData.email, formData.password, rememberMe);
       } else {
         await register(
           formData.name,
@@ -88,6 +129,125 @@ export default function Auth() {
           boxShadow: 'none',
         }}
       >
+        {view === 'forgot' ? (
+          <>
+            <div className="text-center flex flex-col items-center gap-1.5">
+              <img
+                src={logoImg}
+                alt="unfiltered logo"
+                className="w-24 h-24 rounded-3xl object-contain animate-cute-float"
+              />
+              <h1
+                className="text-3xl font-extrabold tracking-tight mt-0.5"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}
+              >
+                forgot password
+              </h1>
+              <p className="text-[13.5px] font-medium" style={{ color: 'var(--ink-soft)' }}>
+                enter your account email and set a new password 🌸
+              </p>
+            </div>
+
+            {forgotError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[13px] font-semibold rounded-2xl">
+                {forgotError}
+              </div>
+            )}
+            {forgotSuccess && (
+              <div
+                className="p-3 text-[13px] font-semibold rounded-2xl"
+                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+              >
+                {forgotSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleForgotSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                  <Mail size={13} /> email address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={forgotData.email}
+                  onChange={handleForgotChange}
+                  className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                  style={{
+                    background: 'var(--surface-muted)',
+                    borderColor: 'var(--border-soft)',
+                    color: 'var(--ink)',
+                  }}
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                  <Lock size={13} /> new password
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  value={forgotData.password}
+                  onChange={handleForgotChange}
+                  className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                  style={{
+                    background: 'var(--surface-muted)',
+                    borderColor: 'var(--border-soft)',
+                    color: 'var(--ink)',
+                  }}
+                  placeholder="at least 8 characters"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                  <Lock size={13} /> confirm new password
+                </label>
+                <input
+                  type="password"
+                  name="password_confirmation"
+                  required
+                  value={forgotData.password_confirmation}
+                  onChange={handleForgotChange}
+                  className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                  style={{
+                    background: 'var(--surface-muted)',
+                    borderColor: 'var(--border-soft)',
+                    color: 'var(--ink)',
+                  }}
+                  placeholder="re-enter your new password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={forgotLoading}
+                className="w-full mt-1 py-3 rounded-2xl text-[14px] font-bold shadow-md transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
+                style={{
+                  background: 'var(--accent)',
+                  color: 'var(--accent-ink)',
+                  boxShadow: '0 6px 20px -2px var(--accent-soft)',
+                }}
+              >
+                {forgotLoading ? 'resetting...' : 'reset password'}
+              </button>
+            </form>
+
+            <div className="text-center pt-2 border-t border-[var(--border-soft)]">
+              <button
+                onClick={() => setView('form')}
+                className="text-[13px] font-bold text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
+              >
+                back to log in
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
         {/* Brand Header with Logo */}
         <div className="text-center flex flex-col items-center gap-1.5">
           <img
@@ -186,9 +346,31 @@ export default function Auth() {
               </button>
             </div>
             {isLogin && (
-              <div className="mt-2 text-right">
+              <div className="mt-2 flex items-center justify-between">
+                <label className="flex items-center gap-2 text-[11.5px] font-bold text-[var(--ink-soft)] cursor-pointer select-none">
+                  <span
+                    onClick={() => setRememberMe((prev) => !prev)}
+                    className="flex items-center justify-center w-4 h-4 rounded-md border transition"
+                    style={{
+                      borderColor: 'var(--border-soft)',
+                      background: rememberMe ? 'var(--accent)' : 'var(--surface-muted)',
+                    }}
+                  >
+                    {rememberMe && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </span>
+                  remember me
+                </label>
                 <button
                   type="button"
+                  onClick={() => {
+                    setForgotError(null);
+                    setForgotSuccess(null);
+                    setView('forgot');
+                  }}
                   className="text-[11.5px] font-bold text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
                 >
                   forgot password?
@@ -296,6 +478,8 @@ export default function Auth() {
               : 'already have a diary? open it here 🌸'}
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

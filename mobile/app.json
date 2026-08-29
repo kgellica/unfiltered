@@ -18,7 +18,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bandong.unfiltered"
+      "bundleIdentifier": "com.bandong.unfiltered",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to quickly and securely log in to Unfiltered."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -37,7 +40,14 @@
       }
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to quickly and securely log in to Unfiltered."
+        }
+      ]
     ]
   }
 }

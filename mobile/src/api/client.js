@@ -1,5 +1,5 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getToken, TOKEN_KEY } from './secureAuthStorage';
 
 // Point this at your running Laravel API's LAN IP — 'localhost' does NOT
 // work from a physical phone (it means "the phone itself", not your PC).
@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 //   EXPO_PUBLIC_API_URL=http://192.168.1.23:8000/api
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.35:8000/api';
-export const TOKEN_KEY = 'unfiltered_auth_token';
+export { TOKEN_KEY };
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -18,7 +18,7 @@ const client = axios.create({
 });
 
 client.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  const token = await getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
