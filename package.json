@@ -2,5 +2,8 @@
   "dependencies": {
     "@react-native-community/datetimepicker": "^9.1.0",
     "react-native-svg": "^15.15.5"
+  },
+  "devDependencies": {
+    "rollup-plugin-visualizer": "^7.1.1"
   }
 }

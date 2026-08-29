@@ -29,7 +29,8 @@ import {
   Plus, 
   X, 
   Heart,
-  Quote
+  Quote,
+  Edit2
 } from 'lucide-react-native';
 import { CUSTOM_AFFIRMATIONS_KEY } from '../components/InlineAffirmation';
 
@@ -79,7 +80,7 @@ function TimeStepper({ value, onChange, disabled }) {
   );
 }
 
-function PromptCard({ prompt, tag, onSwipe, index, total }) {
+function PromptCard({ prompt, tag, onSwipe, index, total, isCustom }) {
   const { mode, accent } = useTheme();
   const styles = useMemo(() => createStyles(), [mode, accent]);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -103,34 +104,30 @@ function PromptCard({ prompt, tag, onSwipe, index, total }) {
   const formattedTag = tag ? tag.replace(/^#+/, '') : 'my own';
   const tagColor = getTagColor(formattedTag);
 
-  // Create PanResponder for swipe gestures
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10;
+        return Math.abs(gestureState.dx) > 5;
       },
       onPanResponderGrant: () => {
         setIsSwiping(true);
         translateX.setValue(0);
       },
       onPanResponderMove: (_, gestureState) => {
-        // Limit the drag to prevent overscrolling
-        const dragX = Math.max(-100, Math.min(100, gestureState.dx));
+        const dragX = Math.max(-150, Math.min(150, gestureState.dx));
         translateX.setValue(dragX);
       },
       onPanResponderRelease: (_, gestureState) => {
         setIsSwiping(false);
         const { dx, vx } = gestureState;
         
-        // Determine if swipe was significant enough
-        const swipeThreshold = 50;
-        const velocityThreshold = 0.5;
+        const swipeThreshold = 40;
+        const velocityThreshold = 0.3;
         
         if (dx > swipeThreshold || vx > velocityThreshold) {
-          // Swipe right - go to next
           Animated.spring(translateX, {
-            toValue: 100,
+            toValue: 200,
             useNativeDriver: true,
             speed: 8,
             bounciness: 10,
@@ -139,9 +136,8 @@ function PromptCard({ prompt, tag, onSwipe, index, total }) {
             onSwipe('right');
           });
         } else if (dx < -swipeThreshold || vx < -velocityThreshold) {
-          // Swipe left - go to previous
           Animated.spring(translateX, {
-            toValue: -100,
+            toValue: -200,
             useNativeDriver: true,
             speed: 8,
             bounciness: 10,
@@ -150,7 +146,6 @@ function PromptCard({ prompt, tag, onSwipe, index, total }) {
             onSwipe('left');
           });
         } else {
-          // Reset position
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
@@ -162,16 +157,15 @@ function PromptCard({ prompt, tag, onSwipe, index, total }) {
     })
   ).current;
 
-  // Calculate opacity and scale based on drag position
   const dragProgress = translateX.interpolate({
-    inputRange: [-100, 0, 100],
-    outputRange: [0.7, 1, 0.7],
+    inputRange: [-150, 0, 150],
+    outputRange: [0.8, 1, 0.8],
     extrapolate: 'clamp',
   });
 
   const rotateZ = translateX.interpolate({
-    inputRange: [-100, 0, 100],
-    outputRange: ['-5deg', '0deg', '5deg'],
+    inputRange: [-150, 0, 150],
+    outputRange: ['-6deg', '0deg', '6deg'],
     extrapolate: 'clamp',
   });
 
@@ -191,8 +185,15 @@ function PromptCard({ prompt, tag, onSwipe, index, total }) {
     >
       <View style={[styles.promptCard, { borderColor: tagColor }]}>
         <View style={styles.promptCardHeader}>
-          <View style={[styles.promptTag, { backgroundColor: tagColor + '20' }]}>
-            <Text style={[styles.promptTagText, { color: tagColor }]}>#{formattedTag}</Text>
+          <View style={styles.promptCardHeaderLeft}>
+            <View style={[styles.promptTag, { backgroundColor: tagColor + '20' }]}>
+              <Text style={[styles.promptTagText, { color: tagColor }]}>#{formattedTag}</Text>
+            </View>
+            {isCustom && (
+              <View style={styles.customBadge}>
+                <Text style={styles.customBadgeText}>custom</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.promptCounter}>{index + 1}/{total}</Text>
         </View>
@@ -203,8 +204,26 @@ function PromptCard({ prompt, tag, onSwipe, index, total }) {
         
         <Text style={styles.promptText}>"{prompt}"</Text>
         
-        <View style={styles.promptSwipeIndicator}>
-          <Text style={styles.promptSwipeText}>← swipe to explore →</Text>
+        <View style={styles.promptNavContainer}>
+          <Pressable 
+            style={styles.promptNavBtn}
+            onPress={() => onSwipe('left')}
+            hitSlop={10}
+          >
+            <ChevronLeft size={20} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+          </Pressable>
+          
+          <View style={styles.promptSwipeIndicator}>
+            <Text style={styles.promptSwipeText}>swipe or tap</Text>
+          </View>
+          
+          <Pressable 
+            style={styles.promptNavBtn}
+            onPress={() => onSwipe('right')}
+            hitSlop={10}
+          >
+            <ChevronRight size={20} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+          </Pressable>
         </View>
       </View>
     </Animated.View>
@@ -229,6 +248,9 @@ export default function RemindersScreen() {
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
   const [suggestedTags] = useState(getAllTags());
   const [filteredTags, setFilteredTags] = useState([]);
+  const [editingPromptIndex, setEditingPromptIndex] = useState(null);
+  const [editPromptText, setEditPromptText] = useState('');
+  const [editPromptTag, setEditPromptTag] = useState('');
 
   const allPrompts = useMemo(() => [...PROMPT_IDEAS, ...customPrompts], [customPrompts]);
 
@@ -290,6 +312,32 @@ export default function RemindersScreen() {
       setCurrentPromptIndex((prev) => prev - 1);
     }
     await AsyncStorage.setItem(CUSTOM_PROMPTS_KEY, JSON.stringify(next));
+  };
+
+  const startEditingPrompt = (idx) => {
+    setEditingPromptIndex(idx);
+    setEditPromptText(customPrompts[idx].prompt);
+    setEditPromptTag(customPrompts[idx].tag);
+  };
+
+  const saveEditPrompt = async () => {
+    if (editingPromptIndex === null) return;
+    const text = editPromptText.trim();
+    if (!text) return;
+    const tag = editPromptTag.trim().replace(/^#+/, '') || 'my own';
+    const updated = [...customPrompts];
+    updated[editingPromptIndex] = { prompt: text, tag };
+    setCustomPrompts(updated);
+    setEditingPromptIndex(null);
+    setEditPromptText('');
+    setEditPromptTag('');
+    await AsyncStorage.setItem(CUSTOM_PROMPTS_KEY, JSON.stringify(updated));
+  };
+
+  const cancelEditing = () => {
+    setEditingPromptIndex(null);
+    setEditPromptText('');
+    setEditPromptTag('');
   };
 
   const handleTagInputChange = (text) => {
@@ -482,6 +530,7 @@ export default function RemindersScreen() {
                 onSwipe={handleSwipe}
                 index={currentPromptIndex}
                 total={allPrompts.length}
+                isCustom={currentPromptIndex >= PROMPT_IDEAS.length}
               />
             )}
             
@@ -491,7 +540,8 @@ export default function RemindersScreen() {
                   <View
                     style={[
                       styles.promptDot,
-                      idx === currentPromptIndex && styles.promptDotActive
+                      idx === currentPromptIndex && styles.promptDotActive,
+                      idx >= PROMPT_IDEAS.length && styles.promptDotCustom
                     ]}
                   />
                 </Pressable>
@@ -502,18 +552,53 @@ export default function RemindersScreen() {
           {/* Custom Prompts Management List */}
           {customPrompts.length > 0 && (
             <View style={styles.customPromptsList}>
-              <Text style={styles.customPromptsLabel}>your custom prompts</Text>
+              <Text style={styles.customPromptsLabel}>your custom prompts ({customPrompts.length})</Text>
               {customPrompts.map((item, idx) => (
                 <View key={`custom-${idx}`} style={styles.customPromptItem}>
-                  <View style={styles.customPromptContent}>
-                    <Text style={styles.customPromptText}>"{item.prompt}"</Text>
-                    <View style={[styles.promptTag, { alignSelf: 'flex-start' }]}>
-                      <Text style={styles.promptTagText}>#{item.tag.replace(/^#+/, '')}</Text>
+                  {editingPromptIndex === idx ? (
+                    <View style={styles.editPromptContainer}>
+                      <TextInput
+                        style={styles.editPromptInput}
+                        value={editPromptText}
+                        onChangeText={setEditPromptText}
+                        placeholder="Edit your prompt"
+                        placeholderTextColor={colors.onSurfaceFaint}
+                        multiline
+                      />
+                      <View style={styles.editRow}>
+                        <TextInput
+                          style={styles.editTagInput}
+                          value={editPromptTag}
+                          onChangeText={setEditPromptTag}
+                          placeholder="tag"
+                          placeholderTextColor={colors.onSurfaceFaint}
+                        />
+                        <Pressable style={styles.editSaveBtn} onPress={saveEditPrompt}>
+                          <Check size={16} color={colors.onPrimary} />
+                        </Pressable>
+                        <Pressable style={styles.editCancelBtn} onPress={cancelEditing}>
+                          <X size={16} color={colors.onSurfaceVariant} />
+                        </Pressable>
+                      </View>
                     </View>
-                  </View>
-                  <Pressable onPress={() => removePrompt(idx)} hitSlop={8} accessibilityLabel="Remove prompt">
-                    <X size={16} color={colors.onSurfaceFaint} />
-                  </Pressable>
+                  ) : (
+                    <>
+                      <View style={styles.customPromptContent}>
+                        <Text style={styles.customPromptText}>"{item.prompt}"</Text>
+                        <View style={[styles.promptTag, { alignSelf: 'flex-start' }]}>
+                          <Text style={styles.promptTagText}>#{item.tag.replace(/^#+/, '')}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.customPromptActions}>
+                        <Pressable onPress={() => startEditingPrompt(idx)} hitSlop={8} accessibilityLabel="Edit prompt">
+                          <Edit2 size={16} color={colors.onSurfaceVariant} />
+                        </Pressable>
+                        <Pressable onPress={() => removePrompt(idx)} hitSlop={8} accessibilityLabel="Remove prompt">
+                          <X size={16} color={colors.onSurfaceFaint} />
+                        </Pressable>
+                      </View>
+                    </>
+                  )}
                 </View>
               ))}
             </View>
@@ -705,7 +790,7 @@ const createStyles = () => StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 2,
     padding: 20,
-    minHeight: 160,
+    minHeight: 180,
     width: '100%',
     ...pixelShadow,
   },
@@ -714,6 +799,11 @@ const createStyles = () => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  promptCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   promptTag: {
     alignSelf: 'flex-start',
@@ -726,6 +816,20 @@ const createStyles = () => StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     color: colors.primary,
+  },
+  customBadge: {
+    backgroundColor: colors.accent + '30',
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  customBadgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: colors.accent,
+    textTransform: 'uppercase',
   },
   promptCounter: {
     fontSize: 11,
@@ -741,16 +845,36 @@ const createStyles = () => StyleSheet.create({
     color: colors.onSurface,
     fontWeight: '600',
     fontStyle: 'italic',
+    flex: 1,
+  },
+  promptNavContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+  },
+  promptNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
   },
   promptSwipeIndicator: {
-    marginTop: 12,
     alignItems: 'center',
   },
   promptSwipeText: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.onSurfaceFaint,
     fontWeight: '500',
     letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   promptCarouselContainer: {
     marginVertical: 12,
@@ -772,6 +896,9 @@ const createStyles = () => StyleSheet.create({
     backgroundColor: colors.accent,
     width: 20,
     borderRadius: 4,
+  },
+  promptDotCustom: {
+    backgroundColor: colors.accent + '60',
   },
   addPromptSection: {
     marginTop: 8,
@@ -848,9 +975,6 @@ const createStyles = () => StyleSheet.create({
     marginBottom: 8,
   },
   customPromptItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1.5,
@@ -863,10 +987,66 @@ const createStyles = () => StyleSheet.create({
     gap: 6,
     paddingRight: 8,
   },
+  customPromptActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+    justifyContent: 'flex-end',
+  },
   customPromptText: {
     fontSize: 13,
     lineHeight: 18,
     color: colors.onSurface,
     fontWeight: '500',
+  },
+  editPromptContainer: {
+    gap: 8,
+  },
+  editPromptInput: {
+    minHeight: 60,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: colors.onSurface,
+    textAlignVertical: 'top',
+  },
+  editRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editTagInput: {
+    flex: 1,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 10,
+    fontSize: 12,
+    color: colors.onSurface,
+  },
+  editSaveBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editCancelBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
   },
 });
