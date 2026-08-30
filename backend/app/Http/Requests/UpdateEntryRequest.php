@@ -19,8 +19,9 @@ class UpdateEntryRequest extends FormRequest
             'mood'       => 'required|in:great,good,okay,low,sad',
             'bg_color'   => 'nullable|string|max:7',
             'entry_date' => 'required|date',
-            'photo_path' => 'nullable|string',
-            'voice_path' => 'nullable|string',
+            'photo_path'   => 'nullable|array|max:5',
+            'photo_path.*' => 'string',
+            'voice_path'   => 'nullable|string',
             'tags'       => 'nullable|array',
             'tags.*'     => 'string|max:50',
         ];

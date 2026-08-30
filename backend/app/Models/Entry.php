@@ -24,6 +24,7 @@ class Entry extends Model
 
     protected $casts = [
         'entry_date' => 'date',
+        'photo_path' => 'array',
     ];
 
     public function user(): BelongsTo
