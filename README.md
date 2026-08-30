@@ -32,7 +32,7 @@ unfiltered/
 
 ### Backend — `backend`
 
-* **Framework:** Laravel 11
+* **Framework:** Laravel 13.25.0
 * **Authentication:** Laravel Sanctum & Laravel Socialite
 * **Database:** MySQL
 
