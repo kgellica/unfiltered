@@ -464,7 +464,8 @@ export default function JournalScreen({ navigation }) {
             const mood = MOOD_META[item.mood] || MOOD_META.good;
             const plainText = (item.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
             const tags = item.tags || [];
-            const hasPhoto = !!item.photo_path;
+            const firstPhoto = Array.isArray(item.photo_path) ? item.photo_path[0] : item.photo_path;
+            const hasPhoto = !!firstPhoto;
             const hasVoice = !!item.voice_path;
             
             return (
@@ -487,7 +488,7 @@ export default function JournalScreen({ navigation }) {
                 {hasPhoto && (
                   <View style={styles.attachmentPreview}>
                     <Image 
-                      source={{ uri: item.photo_path }} 
+                      source={{ uri: firstPhoto }} 
                       style={styles.attachmentImage}
                       resizeMode="cover"
                     />

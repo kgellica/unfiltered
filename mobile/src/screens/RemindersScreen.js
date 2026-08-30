@@ -21,7 +21,6 @@ import { useTheme } from '../context/ThemeContext';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Bell, 
   Check, 
   Sunrise, 
   Moon, 
@@ -30,9 +29,11 @@ import {
   X, 
   Heart,
   Quote,
-  Edit2
+  Edit2,
+  AlertCircle
 } from 'lucide-react-native';
 import { CUSTOM_AFFIRMATIONS_KEY } from '../components/InlineAffirmation';
+import ScrollableTextInput from '../components/ScrollableTextInput';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,13 +50,26 @@ const PROMPT_IDEAS = [
   { prompt: 'what brought me joy this week? ✨', tag: 'gratitude' },
 ];
 
-const getAllTags = () => {
-  const tags = new Set();
-  PROMPT_IDEAS.forEach(item => tags.add(item.tag));
-  return Array.from(tags);
-};
-
 const CUSTOM_PROMPTS_KEY = 'uf_custom_prompts';
+
+const getAllTags = (customPrompts = []) => {
+  const seen = new Set();
+  const ordered = [];
+  [...customPrompts].reverse().forEach((item) => {
+    const clean = (item.tag || '').replace(/^#+/, '').toLowerCase().trim();
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      ordered.push(clean);
+    }
+  });
+  PROMPT_IDEAS.forEach((item) => {
+    if (!seen.has(item.tag)) {
+      seen.add(item.tag);
+      ordered.push(item.tag);
+    }
+  });
+  return ordered;
+};
 
 function TimeStepper({ value, onChange, disabled }) {
   const [h, m] = value.split(':').map(Number);
@@ -84,7 +98,6 @@ function PromptCard({ prompt, tag, onSwipe, index, total, isCustom }) {
   const { mode, accent } = useTheme();
   const styles = useMemo(() => createStyles(), [mode, accent]);
   const translateX = useRef(new Animated.Value(0)).current;
-  const [isSwiping, setIsSwiping] = useState(false);
 
   const getTagColor = (tagName) => {
     const cleanTag = tagName ? tagName.replace(/^#+/, '') : '';
@@ -106,65 +119,47 @@ function PromptCard({ prompt, tag, onSwipe, index, total, isCustom }) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 5;
-      },
-      onPanResponderGrant: () => {
-        setIsSwiping(true);
-        translateX.setValue(0);
+        return Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
       },
       onPanResponderMove: (_, gestureState) => {
-        const dragX = Math.max(-150, Math.min(150, gestureState.dx));
-        translateX.setValue(dragX);
+        translateX.setValue(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        setIsSwiping(false);
         const { dx, vx } = gestureState;
-        
-        const swipeThreshold = 40;
-        const velocityThreshold = 0.3;
-        
-        if (dx > swipeThreshold || vx > velocityThreshold) {
-          Animated.spring(translateX, {
-            toValue: 200,
+        const swipeThreshold = 60;
+        const velocityThreshold = 0.25;
+
+        if (dx < -swipeThreshold || vx < -velocityThreshold) {
+          Animated.timing(translateX, {
+            toValue: -SCREEN_WIDTH,
+            duration: 180,
             useNativeDriver: true,
-            speed: 8,
-            bounciness: 10,
           }).start(() => {
-            translateX.setValue(0);
             onSwipe('right');
           });
-        } else if (dx < -swipeThreshold || vx < -velocityThreshold) {
-          Animated.spring(translateX, {
-            toValue: -200,
+        } else if (dx > swipeThreshold || vx > velocityThreshold) {
+          Animated.timing(translateX, {
+            toValue: SCREEN_WIDTH,
+            duration: 180,
             useNativeDriver: true,
-            speed: 8,
-            bounciness: 10,
           }).start(() => {
-            translateX.setValue(0);
             onSwipe('left');
           });
         } else {
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
-            speed: 12,
-            bounciness: 8,
+            bounciness: 6,
           }).start();
         }
       },
     })
   ).current;
 
-  const dragProgress = translateX.interpolate({
-    inputRange: [-150, 0, 150],
-    outputRange: [0.8, 1, 0.8],
-    extrapolate: 'clamp',
-  });
-
   const rotateZ = translateX.interpolate({
-    inputRange: [-150, 0, 150],
+    inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
     outputRange: ['-6deg', '0deg', '6deg'],
     extrapolate: 'clamp',
   });
@@ -176,7 +171,6 @@ function PromptCard({ prompt, tag, onSwipe, index, total, isCustom }) {
         {
           transform: [
             { translateX },
-            { scale: dragProgress },
             { rotateZ }
           ]
         }
@@ -199,34 +193,81 @@ function PromptCard({ prompt, tag, onSwipe, index, total, isCustom }) {
         </View>
         
         <View style={styles.promptQuoteIcon}>
-          <Quote size={24} color={tagColor} strokeWidth={1.5} />
+          <Quote size={20} color={tagColor} strokeWidth={1.5} />
         </View>
         
-        <Text style={styles.promptText}>"{prompt}"</Text>
-        
-        <View style={styles.promptNavContainer}>
-          <Pressable 
-            style={styles.promptNavBtn}
-            onPress={() => onSwipe('left')}
-            hitSlop={10}
-          >
-            <ChevronLeft size={20} color={colors.onSurfaceVariant} strokeWidth={2.2} />
-          </Pressable>
-          
-          <View style={styles.promptSwipeIndicator}>
-            <Text style={styles.promptSwipeText}>swipe or tap</Text>
-          </View>
-          
-          <Pressable 
-            style={styles.promptNavBtn}
-            onPress={() => onSwipe('right')}
-            hitSlop={10}
-          >
-            <ChevronRight size={20} color={colors.onSurfaceVariant} strokeWidth={2.2} />
-          </Pressable>
-        </View>
+        {/* Vertically scrollable prompt text container */}
+        <ScrollView
+          style={styles.promptTextScrollVertical}
+          contentContainerStyle={styles.promptTextScrollContainerVertical}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={true}
+        >
+          <Text style={styles.promptText}>"{prompt}"</Text>
+        </ScrollView>
       </View>
     </Animated.View>
+  );
+}
+
+function PromptSwipeNav({ onSwipe }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+  return (
+    <View style={styles.promptNavContainer}>
+      <Pressable
+        style={({ pressed }) => [styles.promptNavBtn, pressed && styles.promptNavBtnPressed]}
+        onPress={() => onSwipe('left')}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Previous prompt"
+      >
+        <ChevronLeft size={20} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+      </Pressable>
+
+      <View style={styles.promptSwipeIndicator}>
+        <Text style={styles.promptSwipeText}>swipe or tap</Text>
+      </View>
+
+      <Pressable
+        style={({ pressed }) => [styles.promptNavBtn, pressed && styles.promptNavBtnPressed]}
+        onPress={() => onSwipe('right')}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Next prompt"
+      >
+        <ChevronRight size={20} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+      </Pressable>
+    </View>
+  );
+}
+
+function TagSuggestions({ tags, onSelectTag }) {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+
+  if (tags.length === 0) return null;
+
+  return (
+    <View style={styles.tagSuggestionsDropdown}>
+      <Text style={styles.tagSuggestionsLabel}>already used</Text>
+      <ScrollView 
+        style={styles.tagSuggestionsScroll}
+        showsVerticalScrollIndicator={true}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        {tags.map((tag) => (
+          <Pressable
+            key={tag}
+            style={({ pressed }) => [styles.tagSuggestion, pressed && styles.tagSuggestionPressed]}
+            onPress={() => onSelectTag(tag)}
+          >
+            <Text style={styles.tagSuggestionText}>#{tag}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -246,11 +287,15 @@ export default function RemindersScreen() {
   const [newPrompt, setNewPrompt] = useState('');
   const [newPromptTag, setNewPromptTag] = useState('');
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
-  const [suggestedTags] = useState(getAllTags());
+  const suggestedTags = useMemo(() => getAllTags(customPrompts), [customPrompts]);
   const [filteredTags, setFilteredTags] = useState([]);
+  const [tagInputFocused, setTagInputFocused] = useState(false);
   const [editingPromptIndex, setEditingPromptIndex] = useState(null);
   const [editPromptText, setEditPromptText] = useState('');
   const [editPromptTag, setEditPromptTag] = useState('');
+
+  const [affirmationError, setAffirmationError] = useState('');
+  const [promptError, setPromptError] = useState('');
 
   const allPrompts = useMemo(() => [...PROMPT_IDEAS, ...customPrompts], [customPrompts]);
 
@@ -278,7 +323,11 @@ export default function RemindersScreen() {
 
   const addAffirmation = async () => {
     const text = newAffirmation.trim();
-    if (!text) return;
+    if (!text) {
+      setAffirmationError('Please write an affirmation first.');
+      return;
+    }
+    setAffirmationError('');
     const next = [...customAffirmations, text];
     setCustomAffirmations(next);
     setNewAffirmation('');
@@ -293,7 +342,11 @@ export default function RemindersScreen() {
 
   const addPrompt = async () => {
     const prompt = newPrompt.trim();
-    if (!prompt) return;
+    if (!prompt) {
+      setPromptError('Please write a journal prompt first.');
+      return;
+    }
+    setPromptError('');
     const rawTag = newPromptTag.trim().replace(/^#+/, '');
     const tag = rawTag || 'my own';
     const next = [...customPrompts, { prompt, tag }];
@@ -349,13 +402,26 @@ export default function RemindersScreen() {
       );
       setFilteredTags(filtered);
     } else {
-      setFilteredTags([]);
+      setFilteredTags(tagInputFocused ? suggestedTags : []);
     }
+  };
+
+  const handleTagInputFocus = () => {
+    setTagInputFocused(true);
+    setFilteredTags(suggestedTags.filter(tag =>
+      tag.toLowerCase().includes(newPromptTag.replace(/^#+/, '').toLowerCase())
+    ));
+  };
+
+  const handleTagInputBlur = () => {
+    setTagInputFocused(false);
+    setTimeout(() => setFilteredTags([]), 200);
   };
 
   const selectTag = (tag) => {
     setNewPromptTag(tag);
     setFilteredTags([]);
+    Keyboard.dismiss();
   };
 
   const handleSwipe = (direction) => {
@@ -382,12 +448,6 @@ export default function RemindersScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.headerRow}>
-            <Bell size={20} color={colors.accent} strokeWidth={2.2} />
-            <Text style={styles.headerTitle}>Gentle Reminders</Text>
-          </View>
-          <Text style={styles.headerSub}>keep your streak glowing with gentle nudges and inspiring questions.</Text>
-
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardHeaderTitle}>daily journaling schedule</Text>
@@ -447,23 +507,38 @@ export default function RemindersScreen() {
           <Text style={styles.sectionHint}>add your own — it'll show up in the affirmation card on Home.</Text>
           
           <View style={styles.addRow}>
-            <TextInput
-              style={styles.addInput}
-              placeholder="e.g. i am proud of my progress ✨"
-              placeholderTextColor={colors.onSurfaceFaint}
-              value={newAffirmation}
-              onChangeText={setNewAffirmation}
-              onSubmitEditing={addAffirmation}
-              returnKeyType="done"
-            />
+            <View style={styles.addInputWrapper}>
+              <ScrollableTextInput
+                style={styles.addInput}
+                placeholder="e.g. i am proud of my progress ✨"
+                placeholderTextColor={colors.onSurfaceFaint}
+                value={newAffirmation}
+                onChangeText={setNewAffirmation}
+                onSubmitEditing={addAffirmation}
+                returnKeyType="done"
+                scrollEnabled
+                multiline
+                textAlignVertical="center"
+                minHeight={48}
+                maxHeight={120}
+              />
+            </View>
             <Pressable style={styles.addBtn} onPress={addAffirmation} accessibilityRole="button" accessibilityLabel="Add affirmation">
               <Plus size={18} color={colors.onPrimary} strokeWidth={2.6} />
             </Pressable>
           </View>
+          {affirmationError ? (
+            <View style={styles.errorRow}>
+              <AlertCircle size={14} color={colors.error} strokeWidth={2.2} />
+              <Text style={styles.errorText}>{affirmationError}</Text>
+            </View>
+          ) : null}
 
           {customAffirmations.map((text, idx) => (
             <View key={idx} style={styles.customCard}>
-              <Text style={styles.promptText}>"{text}"</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.customCardScroll}>
+                <Text style={styles.promptText}>"{text}"</Text>
+              </ScrollView>
               <Pressable onPress={() => removeAffirmation(text)} hitSlop={8} accessibilityLabel="Remove affirmation">
                 <X size={16} color={colors.onSurfaceFaint} />
               </Pressable>
@@ -475,56 +550,59 @@ export default function RemindersScreen() {
             <Text style={styles.sectionTitle}>daily prompt inspiration</Text>
           </View>
 
-          {/* Form placed above carousel */}
           <View style={styles.addPromptSection}>
             <Text style={styles.addPromptLabel}>add your own prompt</Text>
-            <TextInput
+            <ScrollableTextInput
               style={styles.addPromptInput}
               placeholder="write your journal prompt here..."
               placeholderTextColor={colors.onSurfaceFaint}
               value={newPrompt}
               onChangeText={setNewPrompt}
-              returnKeyType="next"
               multiline
+              scrollEnabled
+              textAlignVertical="top"
+              minHeight={70}
+              maxHeight={140}
             />
-            <View style={styles.addPromptTagRow}>
-              <TextInput
-                style={styles.addPromptTagInput}
-                placeholder="add a tag (optional)"
-                placeholderTextColor={colors.onSurfaceFaint}
-                value={newPromptTag}
-                onChangeText={handleTagInputChange}
-                returnKeyType="done"
-              />
-              <Pressable 
-                style={styles.addBtn} 
-                onPress={addPrompt}
-                accessibilityRole="button"
-                accessibilityLabel="Add prompt"
-              >
-                <Plus size={18} color={colors.onPrimary} strokeWidth={2.6} />
-              </Pressable>
+            <View style={styles.addPromptTagWrapper}>
+              <View style={styles.addPromptTagRow}>
+                <TextInput
+                  style={styles.addPromptTagInput}
+                  placeholder="add a tag (optional)"
+                  placeholderTextColor={colors.onSurfaceFaint}
+                  value={newPromptTag}
+                  onChangeText={handleTagInputChange}
+                  onFocus={handleTagInputFocus}
+                  onBlur={handleTagInputBlur}
+                  returnKeyType="done"
+                />
+                <Pressable 
+                  style={styles.addBtn} 
+                  onPress={addPrompt}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add prompt"
+                >
+                  <Plus size={18} color={colors.onPrimary} strokeWidth={2.6} />
+                </Pressable>
+              </View>
 
-              {filteredTags.length > 0 && (
-                <View style={styles.tagSuggestions}>
-                  {filteredTags.slice(0, 4).map((tag) => (
-                    <Pressable
-                      key={tag}
-                      style={styles.tagSuggestion}
-                      onPress={() => selectTag(tag)}
-                    >
-                      <Text style={styles.tagSuggestionText}>#{tag}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
+              <TagSuggestions 
+                tags={filteredTags} 
+                onSelectTag={selectTag} 
+              />
             </View>
+            {promptError ? (
+              <View style={styles.errorRow}>
+                <AlertCircle size={14} color={colors.error} strokeWidth={2.2} />
+                <Text style={styles.errorText}>{promptError}</Text>
+              </View>
+            ) : null}
           </View>
 
-          {/* Card Carousel */}
           <View style={styles.promptCarouselContainer}>
             {allPrompts.length > 0 && (
               <PromptCard
+                key={`prompt-card-${currentPromptIndex}`}
                 prompt={allPrompts[currentPromptIndex].prompt}
                 tag={allPrompts[currentPromptIndex].tag}
                 onSwipe={handleSwipe}
@@ -533,7 +611,9 @@ export default function RemindersScreen() {
                 isCustom={currentPromptIndex >= PROMPT_IDEAS.length}
               />
             )}
-            
+
+            {allPrompts.length > 0 && <PromptSwipeNav onSwipe={handleSwipe} />}
+
             <View style={styles.promptDots}>
               {allPrompts.map((_, idx) => (
                 <Pressable key={idx} onPress={() => setCurrentPromptIndex(idx)} hitSlop={6}>
@@ -549,7 +629,6 @@ export default function RemindersScreen() {
             </View>
           </View>
 
-          {/* Custom Prompts Management List */}
           {customPrompts.length > 0 && (
             <View style={styles.customPromptsList}>
               <Text style={styles.customPromptsLabel}>your custom prompts ({customPrompts.length})</Text>
@@ -638,23 +717,6 @@ const createStyles = () => StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingBottom: 60,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontWeight: '800',
-    color: colors.onSurface,
-  },
-  headerSub: {
-    fontSize: 13,
-    color: colors.onSurfaceVariant,
-    marginBottom: 20,
-  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -666,7 +728,7 @@ const createStyles = () => StyleSheet.create({
   },
   cardHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyInBetween: 'space-between',
     alignItems: 'center',
   },
   cardHeaderTitle: {
@@ -746,17 +808,18 @@ const createStyles = () => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 4,
+    width: '100%',
+  },
+  addInputWrapper: {
+    flex: 1,
   },
   addInput: {
-    flex: 1,
-    height: 44,
     borderRadius: radius.lg,
     borderWidth: 1.5,
     borderColor: colors.borderSoft,
     backgroundColor: colors.surface,
     paddingHorizontal: 12,
-    paddingRight: 16,
     fontSize: 13,
     color: colors.onSurface,
   },
@@ -768,6 +831,18 @@ const createStyles = () => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...pixelShadow,
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    fontWeight: '600',
   },
   customCard: {
     flexDirection: 'row',
@@ -781,6 +856,89 @@ const createStyles = () => StyleSheet.create({
     marginBottom: 10,
     gap: 8,
   },
+  customCardScroll: {
+    flex: 1,
+  },
+  addPromptSection: {
+    gap: 10,
+    marginBottom: 16,
+    zIndex: 1000, // Ensure tag suggestions overlay correctly
+  },
+  addPromptLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.onSurface,
+  },
+  addPromptInput: {
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+    padding: 12,
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  addPromptTagWrapper: {
+    position: 'relative',
+    zIndex: 1001,
+  },
+  addPromptTagRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  addPromptTagInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  tagSuggestionsDropdown: {
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    right: 52,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    maxHeight: 160,
+    padding: 8,
+    zIndex: 2000,
+    elevation: 5,
+    ...pixelShadow,
+  },
+  tagSuggestionsLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.onSurfaceFaint,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  tagSuggestionsScroll: {
+    maxHeight: 120,
+  },
+  tagSuggestion: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: radius.sm,
+  },
+  tagSuggestionPressed: {
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  tagSuggestionText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  promptCarouselContainer: {
+    marginVertical: 12,
+  },
   promptCardWrapper: {
     width: '100%',
     alignItems: 'center',
@@ -790,7 +948,7 @@ const createStyles = () => StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 2,
     padding: 20,
-    minHeight: 180,
+    height: 200,
     width: '100%',
     ...pixelShadow,
   },
@@ -806,214 +964,141 @@ const createStyles = () => StyleSheet.create({
     gap: 8,
   },
   promptTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryContainer,
-    borderRadius: radius.sm,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    borderRadius: radius.full,
   },
   promptTagText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
   customBadge: {
-    backgroundColor: colors.accent + '30',
-    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: 8,
     paddingVertical: 2,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: colors.outlineVariant,
   },
   customBadgeText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: colors.accent,
-    textTransform: 'uppercase',
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.onSurfaceVariant,
   },
   promptCounter: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.onSurfaceFaint,
-    fontWeight: '600',
   },
   promptQuoteIcon: {
-    marginBottom: 8,
+    marginBottom: 6,
+  },
+  promptTextScrollVertical: {
+    flex: 1,
+    width: '100%',
+  },
+  promptTextScrollContainerVertical: {
+    paddingBottom: 8,
   },
   promptText: {
     fontSize: 15,
-    lineHeight: 22,
-    color: colors.onSurface,
     fontWeight: '600',
-    fontStyle: 'italic',
-    flex: 1,
+    color: colors.onSurface,
+    lineHeight: 22,
   },
   promptNavContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
+    alignItems: 'center',
+    marginTop: 12,
+    paddingHorizontal: 8,
   },
   promptNavBtn: {
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
+  },
+  promptNavBtnPressed: {
+    backgroundColor: colors.surfaceContainerLow,
   },
   promptSwipeIndicator: {
     alignItems: 'center',
   },
   promptSwipeText: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.onSurfaceFaint,
-    fontWeight: '500',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  promptCarouselContainer: {
-    marginVertical: 12,
+    fontWeight: '600',
   },
   promptDots: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 14,
+    gap: 6,
+    marginTop: 12,
   },
   promptDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.borderSoft,
+    width: 6,
+    height: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.outlineVariant,
   },
   promptDotActive: {
-    backgroundColor: colors.accent,
-    width: 20,
-    borderRadius: 4,
+    width: 18,
+    backgroundColor: colors.primary,
   },
   promptDotCustom: {
-    backgroundColor: colors.accent + '60',
-  },
-  addPromptSection: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  addPromptLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.onSurfaceVariant,
-    marginBottom: 8,
-  },
-  addPromptInput: {
-    minHeight: 70,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    paddingRight: 20,
-    fontSize: 13,
-    color: colors.onSurface,
-    textAlignVertical: 'top',
-  },
-  addPromptTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-    position: 'relative',
-  },
-  addPromptTagInput: {
-    flex: 1,
-    height: 44,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingRight: 16,
-    fontSize: 13,
-    color: colors.onSurface,
-  },
-  tagSuggestions: {
-    position: 'absolute',
-    top: 48,
-    left: 0,
-    right: 52,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    zIndex: 10,
-    ...pixelShadow,
-  },
-  tagSuggestion: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSoft,
-  },
-  tagSuggestionText: {
-    fontSize: 12,
-    color: colors.onSurface,
-    fontWeight: '500',
+    borderColor: colors.primary,
   },
   customPromptsList: {
     marginTop: 16,
+    gap: 10,
   },
   customPromptsLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: colors.onSurfaceVariant,
-    marginBottom: 8,
+    color: colors.onSurface,
   },
   customPromptItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: colors.borderSoft,
-    padding: 14,
-    marginBottom: 10,
+    borderColor: colors.outlineVariant,
+    padding: 12,
   },
   customPromptContent: {
     flex: 1,
     gap: 6,
-    paddingRight: 8,
+    marginRight: 8,
+  },
+  customPromptText: {
+    fontSize: 13,
+    color: colors.onSurface,
   },
   customPromptActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 8,
-    justifyContent: 'flex-end',
-  },
-  customPromptText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.onSurface,
-    fontWeight: '500',
   },
   editPromptContainer: {
+    flex: 1,
     gap: 8,
   },
   editPromptInput: {
-    minHeight: 60,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
     borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    padding: 8,
     fontSize: 13,
     color: colors.onSurface,
-    textAlignVertical: 'top',
   },
   editRow: {
     flexDirection: 'row',
@@ -1022,31 +1107,22 @@ const createStyles = () => StyleSheet.create({
   },
   editTagInput: {
     flex: 1,
-    height: 36,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.borderSoft,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 10,
+    borderRadius: radius.md,
+    paddingHorizontal: 8,
+    height: 32,
     fontSize: 12,
     color: colors.onSurface,
   },
   editSaveBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    padding: 6,
+    borderRadius: radius.sm,
   },
   editCancelBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
+    backgroundColor: colors.surfaceContainerLow,
+    padding: 6,
+    borderRadius: radius.sm,
   },
 });

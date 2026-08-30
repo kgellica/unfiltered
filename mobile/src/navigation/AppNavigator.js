@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -15,6 +15,7 @@ import ThemeAmbienceScreen from '../screens/ThemeAmbienceScreen';
 import RemindersScreen from '../screens/RemindersScreen';
 import MainTabs from './MainTabs';
 import { colors } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,13 +30,22 @@ function AuthStack() {
   );
 }
 
-const modalHeaderOptions = {
-  headerStyle: { backgroundColor: colors.surface },
-  headerTitleStyle: { color: colors.onSurface, fontWeight: '700' },
-  headerTintColor: colors.accent,
-};
-
 function AppStack() {
+  // `colors` is a mutable singleton that ThemeContext updates in place
+  // (see applyMode/applyAccent). Subscribing to useTheme() here forces this
+  // component to re-render whenever the mode/accent change, so the header
+  // (including the back button tint) always reflects the current theme
+  // instead of being frozen at whatever it was on first import.
+  const { mode, accent } = useTheme();
+  const modalHeaderOptions = useMemo(
+    () => ({
+      headerStyle: { backgroundColor: colors.surface },
+      headerTitleStyle: { color: colors.onSurface, fontWeight: '700' },
+      headerTintColor: colors.accent,
+    }),
+    [mode, accent]
+  );
+
   return (
     <Stack.Navigator>
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />

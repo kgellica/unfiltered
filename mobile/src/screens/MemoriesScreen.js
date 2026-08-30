@@ -18,6 +18,13 @@ import { colors, radius, spacing, cardShadow } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
 import RemindersHeaderButton from '../components/RemindersHeaderButton';
 
+// photo_path may be a JSON array of URLs (new entries) or a legacy single string
+const firstPhotoOf = (entry) => {
+  const p = entry?.photo_path;
+  if (Array.isArray(p)) return p[0] || null;
+  return p || null;
+};
+
 const FILTERS = [
   { key: 'all', label: 'All', Icon: Images },
   { key: 'photos', label: 'Photos', Icon: Camera },
@@ -103,7 +110,7 @@ export default function MemoriesScreen({ navigation }) {
       console.log('Total entries loaded:', data?.length || 0);
       
       if (data && data.length > 0) {
-        const withPhotos = data.filter(e => e.photo_path);
+        const withPhotos = data.filter(e => firstPhotoOf(e));
         const withVoice = data.filter(e => e.voice_path);
         console.log('Entries with photos:', withPhotos.length);
         console.log('Entries with voice:', withVoice.length);
@@ -150,7 +157,7 @@ export default function MemoriesScreen({ navigation }) {
     let list = [...entries];
     
     if (filter === 'photos') {
-      list = list.filter((e) => !!e.photo_path);
+      list = list.filter((e) => !!firstPhotoOf(e));
     } else if (filter === 'voice') {
       list = list.filter((e) => !!e.voice_path);
     }
@@ -261,7 +268,8 @@ export default function MemoriesScreen({ navigation }) {
           onRefresh={load}
           ListEmptyComponent={renderEmptyState}
           renderItem={({ item }) => {
-            const hasPhoto = !!item.photo_path;
+            const entryPhoto = firstPhotoOf(item);
+            const hasPhoto = !!entryPhoto;
             const hasVoice = !!item.voice_path;
             const plainText = (item.content || '').replace(/<[^>]+>/g, ' ').trim();
             const formattedDate = formatDateDisplay(item.entry_date);
@@ -291,7 +299,7 @@ export default function MemoriesScreen({ navigation }) {
                 {hasPhoto && (
                   <View style={styles.imageContainer}>
                     <Image 
-                      source={{ uri: item.photo_path }} 
+                      source={{ uri: entryPhoto }} 
                       style={styles.cardImage} 
                       resizeMode="cover"
                       onError={(e) => console.log('Image load error:', e.nativeEvent.error)}

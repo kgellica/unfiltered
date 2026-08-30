@@ -7,6 +7,7 @@ import CalendarScreen from '../screens/CalendarScreen';
 import MemoriesScreen from '../screens/MemoriesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { colors } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,6 +20,10 @@ const ICONS = {
 };
 
 export default function MainTabs() {
+  // Re-render on theme change so the active tab tint / bar colors stay
+  // in sync with the mutable `colors` singleton instead of freezing pink.
+  useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => {

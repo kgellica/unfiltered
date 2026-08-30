@@ -139,11 +139,13 @@ export default function LoginScreen({ navigation }) {
       const unlocked = await unlockWithBiometrics();
       setIsProcessingBiometric(false);
       if (unlocked) {
-        console.log('Session unlocked - navigating to Home');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        });
+        // Don't navigate.reset() here: LoginScreen lives inside AuthStack,
+        // which has no "MainTabs" route (that only exists in AppStack), so
+        // this reset was always throwing "action 'RESET' ... was not
+        // handled by any navigator". unlockWithBiometrics() already sets
+        // the authenticated user on AuthContext, and AppNavigator swaps
+        // AuthStack -> AppStack automatically as soon as `user` is set.
+        console.log('Session unlocked - AppNavigator will switch to MainTabs');
         return true;
       } else {
         Alert.alert('Session expired', 'Please log in again.');
