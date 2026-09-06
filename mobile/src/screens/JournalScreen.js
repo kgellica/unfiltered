@@ -24,10 +24,10 @@ import RemindersHeaderButton from '../components/RemindersHeaderButton';
 
 const MOOD_META = {
   great: { label: 'great', emoji: '😄' },
-  good: { label: 'good', emoji: '🌸' },
-  okay: { label: 'okay', emoji: '☁️' },
-  low: { label: 'low', emoji: '🌧️' },
-  sad: { label: 'sad', emoji: '🧸' },
+  good: { label: 'good', emoji: '🙂' },
+  okay: { label: 'okay', emoji: '😐' },
+  low: { label: 'low', emoji: '🙁' },
+  sad: { label: 'sad', emoji: '😢' },
 };
 
 function normalizeDateKey(val) {
@@ -68,8 +68,6 @@ function formatDateAndTime(dateVal, createdAt) {
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-// ✅ Pure-JS calendar grid — no native module, so it works in Expo Go,
-// a custom dev client, and a production build without any extra config.
 function MonthCalendar({ visibleMonth, onChangeMonth, selectedKey, onSelectDay }) {
   const year = visibleMonth.getFullYear();
   const month = visibleMonth.getMonth();
@@ -158,7 +156,7 @@ function MonthCalendar({ visibleMonth, onChangeMonth, selectedKey, onSelectDay }
 }
 
 export default function JournalScreen({ navigation }) {
-  const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
+  const { mode, accent } = useTheme();
   const styles = useMemo(() => createStyles(), [mode, accent]);
   const { user } = useAuth();
   const [entries, setEntries] = useState([]);
@@ -170,7 +168,6 @@ export default function JournalScreen({ navigation }) {
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
 
-  // ✅ Custom pure-JS calendar state (no native picker dependency)
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(new Date());
 
@@ -249,7 +246,6 @@ export default function JournalScreen({ navigation }) {
   const todayStr = toDateKey(new Date());
   const yesterdayStr = toDateKey(new Date(new Date().setDate(new Date().getDate() - 1)));
 
-  // ✅ NEW HANDLER FUNCTIONS
   const handlePresetPress = (dateKey) => {
     setSelectedDate(dateKey);
     setDateMenuOpen(false);
@@ -263,7 +259,6 @@ export default function JournalScreen({ navigation }) {
   };
 
   const openDatePicker = () => {
-    // Jump the calendar to whatever month is currently selected (or today)
     if (selectedDate) {
       const [y, m, d] = selectedDate.split('-').map(Number);
       setVisibleMonth(new Date(y, m - 1, 1));
@@ -481,7 +476,8 @@ export default function JournalScreen({ navigation }) {
                     <Text style={styles.cardDate}>{formatDateAndTime(item.entry_date, item.created_at)}</Text>
                   </View>
                   <View style={styles.moodPill}>
-                    <Text style={styles.moodPillText}>{mood.emoji} {mood.label}</Text>
+                    <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+                    <Text style={styles.moodLabel}>{mood.label}</Text>
                   </View>
                 </View>
                 
@@ -774,7 +770,11 @@ const createStyles = () => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  cardDateRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  cardDateRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 5 
+  },
   cardDate: {
     fontSize: 11.5,
     fontWeight: '700',
@@ -783,13 +783,29 @@ const createStyles = () => StyleSheet.create({
   moodPill: {
     backgroundColor: colors.surfaceContainer,
     borderRadius: radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 28,
   },
-  moodPillText: {
+  moodEmoji: {
+    fontSize: 12,
+    lineHeight: 14,
+    marginTop: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  moodLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.onSurface,
+    lineHeight: 14,
+    marginLeft: 3,
+    marginTop: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   attachmentPreview: {
     marginBottom: 10,

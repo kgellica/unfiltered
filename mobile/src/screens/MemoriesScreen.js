@@ -9,10 +9,12 @@ import {
   Platform,
   Alert,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Images, Camera, Mic, Calendar, Sparkles } from 'lucide-react-native';
+import { Images, Camera, Mic, Calendar, Sparkles, ChevronDown, Check, X } from 'lucide-react-native';
 import { listEntries } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -102,6 +104,7 @@ export default function MemoriesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [monthMenuOpen, setMonthMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,30 +237,77 @@ export default function MemoriesScreen({ navigation }) {
           })}
         </View>
 
-        {/* Month filter */}
+        {/* Month filter — one compact dropdown pill instead of a horizontal
+            row you had to scroll through one-by-one. Opens a scannable
+            vertical list (with "All Months" to reset) that scales fine
+            whether there are 3 months or 30. */}
         {availableMonths.length > 1 && (
-          <FlatList
-            horizontal
-            data={availableMonths}
-            keyExtractor={(k) => k}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.monthRow}
-            renderItem={({ item: key }) => {
-              const active = selectedMonth === key;
-              return (
-                <Pressable
-                  onPress={() => setSelectedMonth(active ? '' : key)}
-                  style={[styles.monthChip, active && styles.monthChipActive]}
-                >
-                  <Calendar size={12} color={active ? colors.accentInk : colors.onSurfaceVariant} strokeWidth={2.2} />
-                  <Text style={[styles.monthChipText, active && styles.monthChipTextActive]}>
-                    {monthLabelOf(key)}
-                  </Text>
-                </Pressable>
-              );
-            }}
-          />
+          <View style={styles.monthFilterWrap}>
+            <Pressable
+              onPress={() => setMonthMenuOpen(true)}
+              style={({ pressed }) => [styles.monthDropdown, pressed && { opacity: 0.85 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Filter by month"
+            >
+              <Calendar size={14} color={selectedMonth ? colors.accent : colors.onSurfaceVariant} strokeWidth={2.2} />
+              <Text style={[styles.monthDropdownText, selectedMonth && styles.monthDropdownTextActive]} numberOfLines={1}>
+                {selectedMonth ? monthLabelOf(selectedMonth) : 'All Months'}
+              </Text>
+              <ChevronDown size={14} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+            </Pressable>
+            {selectedMonth ? (
+              <Pressable
+                onPress={() => setSelectedMonth('')}
+                hitSlop={8}
+                style={styles.monthClearBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Clear month filter"
+              >
+                <X size={14} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+              </Pressable>
+            ) : null}
+          </View>
         )}
+
+        <Modal
+          visible={monthMenuOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMonthMenuOpen(false)}
+        >
+          <Pressable style={styles.monthModalBackdrop} onPress={() => setMonthMenuOpen(false)}>
+            <Pressable style={styles.monthModalCard} onPress={() => {}}>
+              <Text style={styles.monthModalTitle}>Filter by month</Text>
+              <ScrollView style={styles.monthModalList} showsVerticalScrollIndicator={false}>
+                <Pressable
+                  style={({ pressed }) => [styles.monthModalItem, pressed && styles.monthModalItemPressed]}
+                  onPress={() => { setSelectedMonth(''); setMonthMenuOpen(false); }}
+                >
+                  <Text style={[styles.monthModalItemText, !selectedMonth && styles.monthModalItemTextActive]}>All Months</Text>
+                  {!selectedMonth && <Check size={16} color={colors.accent} strokeWidth={2.6} />}
+                </Pressable>
+                {availableMonths.map((key) => {
+                  const active = selectedMonth === key;
+                  return (
+                    <Pressable
+                      key={key}
+                      style={({ pressed }) => [styles.monthModalItem, pressed && styles.monthModalItemPressed]}
+                      onPress={() => { setSelectedMonth(key); setMonthMenuOpen(false); }}
+                    >
+                      <Text style={[styles.monthModalItemText, active && styles.monthModalItemTextActive]}>
+                        {monthLabelOf(key)}
+                      </Text>
+                      {active && <Check size={16} color={colors.accent} strokeWidth={2.6} />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable style={styles.monthModalCloseBtn} onPress={() => setMonthMenuOpen(false)}>
+                <Text style={styles.monthModalCloseText}>Close</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <FlatList
           style={styles.flex}
@@ -399,22 +449,58 @@ const createStyles = () => StyleSheet.create({
   filterChipText: { fontSize: 12.5, fontWeight: '700', color: colors.onSurfaceVariant },
   filterChipTextActive: { color: colors.accentInk },
 
-  monthRow: { paddingHorizontal: spacing.gutter, gap: 8, paddingBottom: 4 },
-  monthChip: {
+  monthFilterWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: 10,
+  },
+  monthDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    alignSelf: 'flex-start',
+    height: 34,
     paddingHorizontal: 12,
-    paddingVertical: 7,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.borderSoft,
-    marginRight: 8,
   },
-  monthChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  monthChipText: { fontSize: 11.5, fontWeight: '700', color: colors.onSurfaceVariant },
-  monthChipTextActive: { color: colors.accentInk },
+  monthDropdownText: { fontSize: 12.5, fontWeight: '700', color: colors.onSurfaceVariant },
+  monthDropdownTextActive: { color: colors.accent },
+  monthClearBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+  },
+
+  monthModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
+  monthModalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 16,
+    maxHeight: '65%',
+  },
+  monthModalTitle: { fontSize: 15, fontWeight: '800', color: colors.onSurface, marginBottom: 8, paddingHorizontal: 4 },
+  monthModalList: { marginBottom: 4 },
+  monthModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    paddingHorizontal: 10,
+    borderRadius: radius.md,
+  },
+  monthModalItemPressed: { backgroundColor: colors.surfaceMuted },
+  monthModalItemText: { fontSize: 14, fontWeight: '600', color: colors.onSurface },
+  monthModalItemTextActive: { color: colors.accent, fontWeight: '800' },
+  monthModalCloseBtn: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 20 },
+  monthModalCloseText: { fontSize: 13, fontWeight: '700', color: colors.accent },
 
   listContent: {
     paddingHorizontal: spacing.gutter,

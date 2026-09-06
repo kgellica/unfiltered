@@ -8,7 +8,10 @@ import { colors, radius } from '../theme/theme';
 // and fades it out once the user has scrolled to the bottom. Native scroll
 // indicators on these boxes are easy to miss, so this makes it obvious the
 // box is scrollable instead of looking like the text got cut off.
-export default function ScrollableTextInput({ style, onContentSizeChange, onScroll, ...props }) {
+const ScrollableTextInput = React.forwardRef(function ScrollableTextInput(
+  { style, onContentSizeChange, onScroll, ...props },
+  ref
+) {
   const [overflowing, setOverflowing] = useState(false);
   const layoutHeightRef = useRef(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -45,6 +48,7 @@ export default function ScrollableTextInput({ style, onContentSizeChange, onScro
     <View style={styles.wrapper}>
       <TextInput
         {...props}
+        ref={ref}
         style={style}
         multiline
         onLayout={handleLayout}
@@ -60,7 +64,9 @@ export default function ScrollableTextInput({ style, onContentSizeChange, onScro
       </Animated.View>
     </View>
   );
-}
+});
+
+export default ScrollableTextInput;
 
 const styles = StyleSheet.create({
   wrapper: {

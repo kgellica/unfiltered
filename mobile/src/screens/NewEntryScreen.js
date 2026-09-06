@@ -23,19 +23,30 @@ import { createEntry, updateEntry, deleteEntry } from '../api/entries';
 import { uploadFile } from '../api/uploads';
 import PixelButton from '../components/PixelButton';
 import ScrollableTextInput from '../components/ScrollableTextInput';
-import { Camera, Mic, Square, Play, Pause, X, Trash2, Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import PromptBar from '../components/PromptBar';
+import EditorToolbar from '../components/EditorToolbar';
+import { analyzeMood } from '../utils/moodAnalyzer';
+import {
+  Camera, Mic, Square, Play, Pause, X, Trash2, Plus, Minus, ChevronLeft, ChevronRight,
+  Sparkles,
+  ChevronDown, ChevronUp, Info,
+} from 'lucide-react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
+
+const BG_COLOR_PRESETS = [
+  '#FFFFFF', '#FFF3E0', '#FCE4EC', '#E8F5E9', '#E3F2FD', '#F3E5F5', '#FFFDE7', '#EFEBE9',
+];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MOOD_META = {
   great: { label: 'great', emoji: '😄', color: colors.moodGreat, text: 'feeling amazing ✨' },
-  good: { label: 'good', emoji: '🌸', color: colors.moodGood, text: 'feeling happy 🌸' },
-  okay: { label: 'okay', emoji: '☁️', color: colors.moodOkay, text: 'feeling okay ☁️' },
-  low: { label: 'low', emoji: '🌧️', color: colors.moodLow, text: 'feeling a bit low 🌧️' },
-  sad: { label: 'sad', emoji: '🧸', color: colors.moodSad, text: 'feeling down 🧸' },
+  good: { label: 'good', emoji: '🙂', color: colors.moodGood, text: 'feeling happy 🙂' },
+  okay: { label: 'okay', emoji: '😐', color: colors.moodOkay, text: 'feeling okay 😐' },
+  low: { label: 'low', emoji: '🙁', color: colors.moodLow, text: 'feeling a bit low 🙁' },
+  sad: { label: 'sad', emoji: '😢', color: colors.moodSad, text: 'feeling down 😢' },
 };
 const MOOD_ORDER = ['great', 'good', 'okay', 'low', 'sad'];
 
@@ -46,6 +57,14 @@ const SUGGESTED_TAGS = [
 
 const MAX_PHOTOS = 5;
 const MAX_VOICE_DURATION = 600; // 10 minutes in seconds
+
+// Whole-entry text formatting — Expo Go has no native rich-text module, so
+// Bold/Size apply to the entire content box rather than a per-character
+// selection (a real rich-text editor needs a native module and wouldn't
+// run in Expo Go).
+const TEXT_SIZE_ORDER = ['sm', 'md', 'lg'];
+const TEXT_SIZE_PX = { sm: 14, md: 16, lg: 19 };
+const TEXT_SIZE_LABEL = { sm: 'S', md: 'M', lg: 'L' };
 
 export default function NewEntryScreen({ route, navigation }) {
   const { mode, accent } = useTheme();
@@ -58,10 +77,30 @@ export default function NewEntryScreen({ route, navigation }) {
   const [entryDate] = useState(initialDate);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [contentBold, setContentBold] = useState(false);
+  const [contentTextSize, setContentTextSize] = useState('md');
+  const [listMode, setListMode] = useState('bullet');
   const [photoUris, setPhotoUris] = useState([]);
   const [voiceUri, setVoiceUri] = useState(null);
-  const [mood, setMood] = useState('good');
+  // No mood is pre-selected. The prior default of 'good' was saved to the
+  // entry even if the user never touched the Mood row — silently picking
+  // a mood on their behalf contradicts "you're always in control." Mood
+  // now stays unset until the user taps a chip or accepts a suggestion.
+  const [mood, setMood] = useState(null);
+  const [moodInfoVisible, setMoodInfoVisible] = useState(false);
+  const [bgColor, setBgColor] = useState('#FFFFFF');
   const [selectedTags, setSelectedTags] = useState([]);
+  // Which toolbar sections are expanded — mood/tags open by default since
+  // most entries touch those; photo/color/voice/list open on demand.
+  const [openSections, setOpenSections] = useState({ mood: true, tag: true });
+  const scrollRef = useRef(null);
+  const sectionY = useRef({});
+  const contentInputRef = useRef(null);
+  const [contentSelection, setContentSelection] = useState({ start: 0, end: 0 });
+  // On-device mood suggestion — no network call, just scores the text
+  // locally as the user pauses typing.
+  const [suggestedMood, setSuggestedMood] = useState(null);
+  const moodDebounceRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [recording, setRecording] = useState(null);
@@ -120,12 +159,39 @@ export default function NewEntryScreen({ route, navigation }) {
           }
         }
         setVoiceUri(e.voice_path || null);
-        setMood(e.mood && MOOD_META[e.mood] ? e.mood : 'good');
+        setMood(e.mood && MOOD_META[e.mood] ? e.mood : null);
+        setBgColor(e.bg_color || '#FFFFFF');
         setSelectedTags((e.tags || []).map((t) => (typeof t === 'string' ? t : t.name)));
         setLoading(false);
       }).catch(() => setLoading(false));
     }
   }, [entryId]);
+
+  // Debounced on-device mood suggestion — waits until the user pauses
+  // typing, scores the text locally (no network), and offers a suggestion
+  // pill near the Mood section if it disagrees with the current selection.
+  useEffect(() => {
+    if (moodDebounceRef.current) clearTimeout(moodDebounceRef.current);
+    moodDebounceRef.current = setTimeout(() => {
+      const result = analyzeMood(content);
+      if (result && result.confidence >= 0.3 && result.mood !== mood) {
+        setSuggestedMood(result.mood);
+      } else {
+        setSuggestedMood(null);
+      }
+    }, 700);
+    return () => clearTimeout(moodDebounceRef.current);
+  }, [content, mood]);
+
+  const acceptSuggestedMood = () => {
+    if (suggestedMood) {
+      setMood(suggestedMood);
+      setOpenSections((p) => ({ ...p, mood: true }));
+    }
+    setSuggestedMood(null);
+  };
+
+  const dismissSuggestedMood = () => setSuggestedMood(null);
 
   const pickPhoto = async () => {
     if (photoUris.length >= MAX_PHOTOS) {
@@ -289,6 +355,54 @@ export default function NewEntryScreen({ route, navigation }) {
 
   const toggleTag = (t) => {
     setSelectedTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  };
+
+  // Section jump handler — still used to open + scroll to Mood when Save
+  // catches a missing mood (see onSave). No longer wired to any icon row.
+  const handleToolbarPress = (key) => {
+    setOpenSections((prev) => ({ ...prev, [key]: true }));
+    requestAnimationFrame(() => {
+      const y = sectionY.current[key];
+      if (scrollRef.current && typeof y === 'number') {
+        scrollRef.current.scrollTo({ y: Math.max(0, y - 12), animated: true });
+      }
+    });
+  };
+
+  const registerSectionY = (key) => (e) => {
+    sectionY.current[key] = e.nativeEvent.layout.y;
+  };
+
+  // Inserts the next bullet or numbered list item at the cursor. Numbered
+  // mode counts existing "N. " lines above the cursor so the sequence keeps
+  // counting up correctly even if items were deleted in between.
+  const insertListItem = () => {
+    const { start, end } = contentSelection;
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+    const needsNewline = before.length > 0 && !before.endsWith('\n');
+    let marker = '\u2022 ';
+    if (listMode === 'number') {
+      const priorNumbers = before.match(/^\d+\.\s/gm) || [];
+      const nextNum = priorNumbers.length + 1;
+      marker = `${nextNum}. `;
+    }
+    const insertion = `${needsNewline ? '\n' : ''}${marker}`;
+    setContent(`${before}${insertion}${after}`);
+    contentInputRef.current?.focus?.();
+  };
+
+  const toggleListMode = () => setListMode((m) => (m === 'number' ? 'bullet' : 'number'));
+
+
+  // "Use this prompt" from PromptBar — drops it in as the title if there
+  // isn't one yet, otherwise seeds the content so it doesn't clobber work.
+  const handleUsePrompt = (promptText) => {
+    if (!title.trim()) {
+      setTitle(promptText.length > 100 ? promptText.slice(0, 100) : promptText);
+    } else if (!content.trim()) {
+      setContent(`${promptText}\n\n`);
+    }
   };
 
   const startRecording = async () => {
@@ -456,6 +570,11 @@ export default function NewEntryScreen({ route, navigation }) {
       Alert.alert('Empty entry', 'Please add a title, content, photo, or voice recording before saving.');
       return;
     }
+    if (!mood) {
+      handleToolbarPress('mood');
+      Alert.alert('Pick a mood', 'Choose how you\u2019re feeling before saving \u2014 or tap the suggested mood if one appears.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -486,6 +605,7 @@ export default function NewEntryScreen({ route, navigation }) {
         photo_path: finalPhotoUris.length > 0 ? finalPhotoUris : null,
         voice_path: finalVoiceUri || null,
         mood,
+        bg_color: bgColor,
         tags: selectedTags,
       };
 
@@ -542,12 +662,15 @@ export default function NewEntryScreen({ route, navigation }) {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
         <ScrollView 
+          ref={scrollRef}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.dateLabel}>{entryDate}</Text>
-          
+
+          <PromptBar onUsePrompt={handleUsePrompt} />
+
           <TextInput
             style={styles.titleInput}
             placeholder="Entry title"
@@ -557,45 +680,164 @@ export default function NewEntryScreen({ route, navigation }) {
             maxLength={100}
           />
           
-          <ScrollableTextInput
-            style={styles.contentInput}
-            placeholder="Write about your day..."
-            placeholderTextColor={colors.outline}
-            value={content}
-            onChangeText={setContent}
-            textAlignVertical="top"
-            scrollEnabled
-            showsVerticalScrollIndicator={true}
-          />
-
-          <Text style={styles.sectionLabel}>MOOD</Text>
-          <View style={styles.moodRow}>
-            {MOOD_ORDER.map((key) => {
-              const m = MOOD_META[key];
-              const active = mood === key;
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => setMood(key)}
-                  style={[
-                    styles.moodChip,
-                    { 
-                      backgroundColor: active ? m.color : colors.surfaceContainerLow,
-                      borderColor: active ? m.color : colors.outlineVariant,
-                      borderWidth: active ? 2 : 1.5,
-                    }
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Mood: ${m.label}`}
-                >
-                  <Text style={styles.moodEmoji}>{m.emoji}</Text>
-                  <Text style={[styles.moodLabel, active && styles.moodLabelActive]}>{m.label}</Text>
-                </Pressable>
-              );
-            })}
+          {/* Wrapper is position:relative so the formatting strip can sit
+              flush inside the box's top-left corner, overlaid on the text
+              area itself instead of as a separate row underneath. */}
+          <View style={styles.contentBoxWrap}>
+            <ScrollableTextInput
+              ref={contentInputRef}
+              style={[
+                styles.contentInput,
+                { backgroundColor: bgColor === '#FFFFFF' ? colors.surfaceContainerLow : bgColor },
+                { fontWeight: contentBold ? '700' : '400', fontSize: TEXT_SIZE_PX[contentTextSize], lineHeight: TEXT_SIZE_PX[contentTextSize] * 1.4 },
+              ]}
+              placeholder="Write about your day..."
+              placeholderTextColor={colors.outline}
+              value={content}
+              onChangeText={setContent}
+              onSelectionChange={(e) => setContentSelection(e.nativeEvent.selection)}
+              textAlignVertical="top"
+              scrollEnabled
+              showsVerticalScrollIndicator={true}
+            />
+            <View style={styles.contentToolbarOverlay} pointerEvents="box-none">
+              <EditorToolbar
+                bold={contentBold}
+                onToggleBold={() => setContentBold((b) => !b)}
+                textSizeLabel={TEXT_SIZE_LABEL[contentTextSize]}
+                onCycleTextSize={() =>
+                  setContentTextSize((s) => TEXT_SIZE_ORDER[(TEXT_SIZE_ORDER.indexOf(s) + 1) % TEXT_SIZE_ORDER.length])
+                }
+                listMode={listMode}
+                onInsertListItem={insertListItem}
+                onToggleListMode={toggleListMode}
+              />
+            </View>
           </View>
 
-          <Text style={styles.sectionLabel}>PHOTOS ({photoUris.length}/{MAX_PHOTOS})</Text>
+          <View onLayout={registerSectionY('mood')} />
+          <Pressable
+            onPress={() => setOpenSections((p) => ({ ...p, mood: !p.mood }))}
+            style={styles.sectionHeaderRow}
+            accessibilityRole="button"
+            accessibilityLabel={`${openSections.mood ? 'Collapse' : 'Expand'} Mood section`}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Text style={styles.sectionLabel}>MOOD{!mood ? ' \u00b7 NOT SET' : ''}</Text>
+              <Pressable
+                onPress={() => setMoodInfoVisible(true)}
+                hitSlop={10}
+                style={styles.sectionInfoBtn}
+                accessibilityRole="button"
+                accessibilityLabel="How mood suggestions work"
+              >
+                <Info size={14} color={colors.onSurfaceFaint} strokeWidth={2.2} />
+              </Pressable>
+            </View>
+            {openSections.mood ? (
+              <ChevronUp size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            ) : (
+              <ChevronDown size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            )}
+          </Pressable>
+          {suggestedMood && (
+            <View style={styles.moodSuggestRow}>
+              <Sparkles size={14} color={colors.accent} strokeWidth={2.4} />
+              <Text style={styles.moodSuggestText}>
+                Sounds like you're feeling {MOOD_META[suggestedMood].label} {MOOD_META[suggestedMood].emoji}. Use it?
+              </Text>
+              <Pressable
+                onPress={acceptSuggestedMood}
+                hitSlop={8}
+                style={styles.moodSuggestAction}
+                accessibilityRole="button"
+                accessibilityLabel={`Use suggested mood: ${MOOD_META[suggestedMood].label}`}
+              >
+                <Text style={styles.moodSuggestActionText}>Use</Text>
+              </Pressable>
+              <Pressable
+                onPress={dismissSuggestedMood}
+                hitSlop={8}
+                style={styles.moodSuggestDismiss}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss mood suggestion"
+              >
+                <X size={14} color={colors.onSurfaceVariant} strokeWidth={2.2} />
+              </Pressable>
+            </View>
+          )}
+          {!mood && !suggestedMood && openSections.mood && (
+            <Text style={styles.moodHintText}>Tap a mood below — nothing is picked for you.</Text>
+          )}
+          {openSections.mood && (
+            <View style={styles.moodRow}>
+              {MOOD_ORDER.map((key) => {
+                const m = MOOD_META[key];
+                const active = mood === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => setMood(key)}
+                    style={[
+                      styles.moodChip,
+                      { 
+                        backgroundColor: active ? m.color : colors.surfaceContainerLow,
+                        borderColor: active ? m.color : colors.outlineVariant,
+                        borderWidth: active ? 2 : 1.5,
+                      }
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Mood: ${m.label}`}
+                  >
+                    <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                    <Text style={[styles.moodLabel, active && styles.moodLabelActive]}>{m.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          <Modal
+            visible={moodInfoVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setMoodInfoVisible(false)}
+          >
+            <Pressable style={styles.infoOverlay} onPress={() => setMoodInfoVisible(false)}>
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>How mood suggestions work</Text>
+                <Text style={styles.infoBody}>
+                  As you type, your device scans the words on-screen (nothing leaves your phone) and may
+                  suggest a mood. It never changes your entry by itself — you decide by tapping Use or
+                  dismissing it, and your saved mood only changes when you tap a mood chip yourself.
+                </Text>
+                <Pressable
+                  style={styles.infoCloseBtn}
+                  onPress={() => setMoodInfoVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                >
+                  <Text style={styles.infoCloseBtnText}>Got it</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Modal>
+
+          <View onLayout={registerSectionY('photo')} />
+          <Pressable
+            onPress={() => setOpenSections((p) => ({ ...p, photo: !p.photo }))}
+            style={styles.sectionHeaderRow}
+            accessibilityRole="button"
+            accessibilityLabel={`${openSections.photo ? 'Collapse' : 'Expand'} Photos section`}
+          >
+            <Text style={styles.sectionLabel}>PHOTOS ({photoUris.length}/{MAX_PHOTOS})</Text>
+            {openSections.photo ? (
+              <ChevronUp size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            ) : (
+              <ChevronDown size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            )}
+          </Pressable>
+          {openSections.photo && <>
           {uploadingPhoto && (
             <View style={styles.uploadingContainer}>
               <ActivityIndicator size="small" color={colors.accent} />
@@ -636,8 +878,55 @@ export default function NewEntryScreen({ route, navigation }) {
               <Text style={styles.attachButtonText}>Add Photo ({photoUris.length}/{MAX_PHOTOS})</Text>
             </Pressable>
           )}
+          </>}
 
-          <Text style={styles.sectionLabel}>VOICE JOURNAL</Text>
+          <View onLayout={registerSectionY('color')} />
+          <Pressable
+            onPress={() => setOpenSections((p) => ({ ...p, color: !p.color }))}
+            style={styles.sectionHeaderRow}
+            accessibilityRole="button"
+            accessibilityLabel={`${openSections.color ? 'Collapse' : 'Expand'} Entry Color section`}
+          >
+            <Text style={styles.sectionLabel}>ENTRY COLOR</Text>
+            {openSections.color ? (
+              <ChevronUp size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            ) : (
+              <ChevronDown size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            )}
+          </Pressable>
+          {openSections.color && (
+            <View style={styles.colorRow}>
+              {BG_COLOR_PRESETS.map((c) => (
+                <Pressable
+                  key={c}
+                  onPress={() => setBgColor(c)}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: c },
+                    bgColor === c && styles.colorSwatchActive,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Background color ${c}`}
+                />
+              ))}
+            </View>
+          )}
+
+          <View onLayout={registerSectionY('voice')} />
+          <Pressable
+            onPress={() => setOpenSections((p) => ({ ...p, voice: !p.voice }))}
+            style={styles.sectionHeaderRow}
+            accessibilityRole="button"
+            accessibilityLabel={`${openSections.voice ? 'Collapse' : 'Expand'} Voice Journal section`}
+          >
+            <Text style={styles.sectionLabel}>VOICE JOURNAL</Text>
+            {openSections.voice ? (
+              <ChevronUp size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            ) : (
+              <ChevronDown size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            )}
+          </Pressable>
+          {openSections.voice && <>
           {uploadingVoice && (
             <View style={styles.uploadingContainer}>
               <ActivityIndicator size="small" color={colors.accent} />
@@ -712,9 +1001,23 @@ export default function NewEntryScreen({ route, navigation }) {
               </View>
             )}
           </View>
+          </>}
 
-          <Text style={styles.sectionLabel}>TAGS</Text>
-          <View style={styles.tagRow}>
+          <View onLayout={registerSectionY('tag')} />
+          <Pressable
+            onPress={() => setOpenSections((p) => ({ ...p, tag: !p.tag }))}
+            style={styles.sectionHeaderRow}
+            accessibilityRole="button"
+            accessibilityLabel={`${openSections.tag ? 'Collapse' : 'Expand'} Tags section`}
+          >
+            <Text style={styles.sectionLabel}>TAGS</Text>
+            {openSections.tag ? (
+              <ChevronUp size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            ) : (
+              <ChevronDown size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            )}
+          </Pressable>
+          {openSections.tag && <View style={styles.tagRow}>
             {SUGGESTED_TAGS.map((t) => {
               const active = selectedTags.includes(t);
               return (
@@ -729,7 +1032,7 @@ export default function NewEntryScreen({ route, navigation }) {
                 </Pressable>
               );
             })}
-          </View>
+          </View>}
 
           <View style={styles.buttonContainer}>
             <Pressable 
@@ -867,6 +1170,10 @@ const createStyles = () => StyleSheet.create({
     marginBottom: 12,
     paddingVertical: 4,
   },
+  contentBoxWrap: {
+    position: 'relative',
+    marginBottom: spacing.md,
+  },
   contentInput: {
     height: 180,
     maxHeight: 300,
@@ -878,7 +1185,13 @@ const createStyles = () => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.outlineVariant,
     padding: spacing.sm,
-    marginBottom: spacing.md,
+    paddingTop: 40, // clears the overlaid formatting strip in the top-left corner
+    marginBottom: 0,
+  },
+  contentToolbarOverlay: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
   },
   sectionLabel: { 
     fontSize: 11, 
@@ -889,6 +1202,86 @@ const createStyles = () => StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
+
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 4 },
+  colorSwatch: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
+    borderColor: colors.outlineVariant,
+  },
+  colorSwatchActive: {
+    borderColor: colors.accent,
+    borderWidth: 3,
+  },
+
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sectionInfoBtn: { padding: 4 },
+  moodHintText: {
+    fontSize: 12,
+    color: colors.onSurfaceFaint,
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  moodSuggestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  moodSuggestText: { flex: 1, fontSize: 12.5, fontWeight: '600', color: colors.onSurface },
+  moodSuggestAction: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.full,
+    minHeight: 32,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  moodSuggestActionText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+  moodSuggestDismiss: {
+    minHeight: 32,
+    minWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  infoCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 20,
+    width: '100%',
+    maxWidth: 360,
+  },
+  infoTitle: { fontSize: 15, fontWeight: '800', color: colors.onSurface, marginBottom: 8 },
+  infoBody: { fontSize: 13, lineHeight: 19, color: colors.onSurfaceVariant, marginBottom: 16 },
+  infoCloseBtn: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.accent,
+    borderRadius: radius.full,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  infoCloseBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
   
   photoScrollView: {
     flexDirection: 'row',
@@ -1042,22 +1435,26 @@ const createStyles = () => StyleSheet.create({
   
   moodRow: { 
     flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: 8,
+    flexWrap: 'nowrap',
+    gap: 6,
     marginBottom: 4,
+    justifyContent: 'flex-start',
   },
   moodChip: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    width: 62,
+    flex: 1,
+    maxWidth: 62,
+    minWidth: 52,
     paddingVertical: 8,
+    paddingHorizontal: 4,
     borderRadius: radius.lg,
     borderWidth: 1.5,
   },
-  moodEmoji: { fontSize: 20 },
+  moodEmoji: { fontSize: 18 },
   moodLabel: { 
-    fontSize: 10, 
+    fontSize: 9, 
     fontWeight: '600', 
     color: colors.onSurfaceVariant,
   },
