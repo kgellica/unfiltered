@@ -11,13 +11,14 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import PixelButton from '../components/PixelButton';
 import CodeInput from '../components/CodeInput';
 import { colors, radius } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
-import { Eye, EyeOff, Fingerprint, KeyRound, Check } from 'lucide-react-native';
+import { Eye, EyeOff, Fingerprint, KeyRound, Check, X } from 'lucide-react-native';
 import { isBiometricAvailable, authenticateWithBiometrics, getBiometricStatus } from '../utils/biometrics';
 import eventEmitter from '../utils/eventEmitter';
 
@@ -51,6 +52,10 @@ export default function LoginScreen({ navigation }) {
   const [isProcessingBiometric, setIsProcessingBiometric] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [rememberMe, setRememberMe] = useState(true);
+  
+  // Modal states
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
 
   // Listen for token updates from event emitter
   useEffect(() => {
@@ -139,12 +144,6 @@ export default function LoginScreen({ navigation }) {
       const unlocked = await unlockWithBiometrics();
       setIsProcessingBiometric(false);
       if (unlocked) {
-        // Don't navigate.reset() here: LoginScreen lives inside AuthStack,
-        // which has no "MainTabs" route (that only exists in AppStack), so
-        // this reset was always throwing "action 'RESET' ... was not
-        // handled by any navigator". unlockWithBiometrics() already sets
-        // the authenticated user on AuthContext, and AppNavigator swaps
-        // AuthStack -> AppStack automatically as soon as `user` is set.
         console.log('Session unlocked - AppNavigator will switch to MainTabs');
         return true;
       } else {
@@ -165,6 +164,11 @@ export default function LoginScreen({ navigation }) {
   }, [performBiometricUnlock]);
 
   const onSubmitPassword = async () => {
+    if (!termsAgreed) {
+      setTermsModalVisible(true);
+      return;
+    }
+    
     if (!email || !password) {
       Alert.alert('Missing info', 'Please enter your email and password.');
       return;
@@ -189,6 +193,11 @@ export default function LoginScreen({ navigation }) {
   };
 
   const onSubmitPin = async () => {
+    if (!termsAgreed) {
+      setTermsModalVisible(true);
+      return;
+    }
+    
     if (pin.length !== 6) {
       Alert.alert('Enter your PIN', 'Please enter your 6-digit PIN.');
       return;
@@ -212,149 +221,426 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  // Handle terms agreement
+  const handleAgreeTerms = () => {
+    setTermsAgreed(true);
+    setTermsModalVisible(false);
+  };
+
+  const handleDeclineTerms = () => {
+    setTermsModalVisible(false);
+    // User stays on login screen, cannot proceed
+  };
+
   // PIN Login Screen
   if (screen === 'pin') {
     return (
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.pinContainer}>
-          <View style={styles.brandRow}>
-            <Image source={Logo} style={styles.logoImage} />
-            <Text style={styles.appName}>UNFILTERED</Text>
-          </View>
-          <Text style={styles.pinTitle}>Welcome back</Text>
-          <Text style={styles.pinSubtitle}>{savedEmail}</Text>
-          {biometricEnabled ? (
-            <View style={styles.methodToggle}>
-              <TouchableOpacity
-                style={[styles.methodOption, method === 'pin' && styles.methodOptionActive]}
-                onPress={() => setMethod('pin')}
-              >
-                <KeyRound size={16} color={method === 'pin' ? colors.accentInk : colors.onSurfaceVariant} />
-                <Text style={[styles.methodOptionText, method === 'pin' && styles.methodOptionTextActive]}>PIN</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.methodOption, method === 'biometric' && styles.methodOptionActive]}
-                onPress={tryBiometricUnlock}
-              >
-                <Fingerprint size={16} color={method === 'biometric' ? colors.accentInk : colors.onSurfaceVariant} />
-                <Text style={[styles.methodOptionText, method === 'biometric' && styles.methodOptionTextActive]}>Biometric</Text>
-              </TouchableOpacity>
+      <>
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.pinContainer}>
+            <View style={styles.brandRow}>
+              <Image source={Logo} style={styles.logoImage} />
+              <Text style={styles.appName}>UNFILTERED</Text>
             </View>
-          ) : (
+            <Text style={styles.pinTitle}>Welcome back</Text>
+            <Text style={styles.pinSubtitle}>{savedEmail}</Text>
+            {biometricEnabled ? (
+              <View style={styles.methodToggle}>
+                <TouchableOpacity
+                  style={[styles.methodOption, method === 'pin' && styles.methodOptionActive]}
+                  onPress={() => setMethod('pin')}
+                >
+                  <KeyRound size={16} color={method === 'pin' ? colors.accentInk : colors.onSurfaceVariant} />
+                  <Text style={[styles.methodOptionText, method === 'pin' && styles.methodOptionTextActive]}>PIN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.methodOption, method === 'biometric' && styles.methodOptionActive]}
+                  onPress={tryBiometricUnlock}
+                >
+                  <Fingerprint size={16} color={method === 'biometric' ? colors.accentInk : colors.onSurfaceVariant} />
+                  <Text style={[styles.methodOptionText, method === 'biometric' && styles.methodOptionTextActive]}>Biometric</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={styles.pinHint}>Enter your 6-digit PIN</Text>
+            )}
             <Text style={styles.pinHint}>Enter your 6-digit PIN</Text>
-          )}
-          <Text style={styles.pinHint}>Enter your 6-digit PIN</Text>
-          <View style={{ marginTop: 16, marginBottom: 8 }}>
-            <CodeInput value={pin} onChange={setPin} secure allowReveal />
+            <View style={{ marginTop: 16, marginBottom: 8 }}>
+              <CodeInput value={pin} onChange={setPin} secure allowReveal />
+            </View>
+            <PixelButton title="Unlock" onPress={onSubmitPin} loading={loading} style={{ marginTop: 20, width: '100%' }} />
+            <Pressable onPress={() => setScreen('password')} hitSlop={8} style={{ marginTop: 16 }}>
+              <Text style={styles.forgotText}>Use email and password instead</Text>
+            </Pressable>
+            
+            {/* Terms Link */}
+            <View style={styles.legalContainer}>
+              <Text style={styles.legalText}>
+                By continuing, you agree to our{' '}
+                <Text style={styles.legalLink} onPress={() => setTermsModalVisible(true)}>
+                  Terms of Service
+                </Text>
+                {' and '}
+                <Text style={styles.legalLink} onPress={() => setTermsModalVisible(true)}>
+                  Privacy Policy
+                </Text>
+              </Text>
+            </View>
           </View>
-          <PixelButton title="Unlock" onPress={onSubmitPin} loading={loading} style={{ marginTop: 20, width: '100%' }} />
-          <Pressable onPress={() => setScreen('password')} hitSlop={8} style={{ marginTop: 16 }}>
-            <Text style={styles.forgotText}>Use email and password instead</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+
+        {/* Terms Modal */}
+        <TermsModal
+          visible={termsModalVisible}
+          onAgree={handleAgreeTerms}
+          onDecline={handleDeclineTerms}
+        />
+      </>
     );
   }
 
   // Password Login Screen
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Text style={styles.topStarIcon}>☆</Text>
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <Image source={Logo} style={styles.logoImage} />
-            <Text style={styles.appName}>UNFILTERED</Text>
-          </View>
-          <Text style={styles.tagline}>Your little space to remember every day</Text>
-        </View>
-        <View style={styles.card}>
-          <View style={styles.inputWrapper}>
-            <View style={[styles.inputContainer, (emailFocused || email) && styles.inputContainerActive]}>
-              <Text style={[styles.floatingLabel, (emailFocused || email) && styles.floatingLabelActive]}>Email Address</Text>
-              <TextInput
-                style={[styles.input, (emailFocused || email) && styles.inputWithText]}
-                placeholderTextColor="#999"
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+    <>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Text style={styles.topStarIcon}>☆</Text>
+          <View style={styles.header}>
+            <View style={styles.brandRow}>
+              <Image source={Logo} style={styles.logoImage} />
+              <Text style={styles.appName}>UNFILTERED</Text>
             </View>
+            <Text style={styles.tagline}>Your little space to remember every day</Text>
           </View>
-          <View style={[styles.inputWrapper, { marginTop: 20 }]}>
-            <View style={[styles.inputContainer, (passwordFocused || password) && styles.inputContainerActive]}>
-              <Text style={[styles.floatingLabel, (passwordFocused || password) && styles.floatingLabelActive]}>Password</Text>
-              <View style={styles.passwordContainer}>
+          <View style={styles.card}>
+            <View style={styles.inputWrapper}>
+              <View style={[styles.inputContainer, (emailFocused || email) && styles.inputContainerActive]}>
+                <Text style={[styles.floatingLabel, (emailFocused || email) && styles.floatingLabelActive]}>Email Address</Text>
                 <TextInput
-                  style={[styles.passwordInput, (passwordFocused || password) && styles.inputWithText]}
+                  style={[styles.input, (emailFocused || email) && styles.inputWithText]}
                   placeholderTextColor="#999"
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  secureTextEntry={!showPassword}
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-                <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                  {showPassword ? <EyeOff size={20} color={colors.onSurfaceFaint} /> : <Eye size={20} color={colors.onSurfaceFaint} />}
-                </TouchableOpacity>
               </View>
             </View>
-          </View>
-          <View style={styles.rememberForgotContainer}>
-            <Pressable
-              style={styles.rememberMeRow}
-              onPress={() => setRememberMe((prev) => !prev)}
-              hitSlop={8}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: rememberMe }}
-              accessibilityLabel="Remember me"
-            >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                {rememberMe && <Check size={13} color={colors.accentInk} strokeWidth={3} />}
-              </View>
-              <Text style={styles.rememberMeText}>Remember me</Text>
-            </Pressable>
-            <Pressable onPress={() => navigation.navigate('ForgotPassword')} hitSlop={8}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </Pressable>
-          </View>
-          <PixelButton title="Log In" onPress={onSubmitPassword} loading={loading} style={styles.loginBtn} textStyle={styles.loginBtnText} />
-          {hasReturningSession && (
-            <>
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or continue with</Text>
-                <View style={styles.dividerLine} />
-              </View>
-              <View style={styles.quickLoginRow}>
-                <TouchableOpacity style={[styles.quickLoginBtn, !biometricEnabled && styles.quickLoginBtnFull]} onPress={() => setScreen('pin')}>
-                  <KeyRound size={18} color={colors.onSurface} />
-                  <Text style={styles.quickLoginText}>PIN</Text>
-                </TouchableOpacity>
-                {biometricEnabled && (
-                  <TouchableOpacity style={styles.quickLoginBtn} onPress={() => setScreen('pin')}>
-                    <Fingerprint size={18} color={colors.onSurface} />
-                    <Text style={styles.quickLoginText}>Biometric</Text>
+            <View style={[styles.inputWrapper, { marginTop: 20 }]}>
+              <View style={[styles.inputContainer, (passwordFocused || password) && styles.inputContainerActive]}>
+                <Text style={[styles.floatingLabel, (passwordFocused || password) && styles.floatingLabelActive]}>Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.passwordInput, (passwordFocused || password) && styles.inputWithText]}
+                    placeholderTextColor="#999"
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                    {showPassword ? <EyeOff size={20} color={colors.onSurfaceFaint} /> : <Eye size={20} color={colors.onSurfaceFaint} />}
                   </TouchableOpacity>
-                )}
+                </View>
               </View>
-            </>
-          )}
-        </View>
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
-          <Pressable onPress={() => navigation.navigate('SignUp')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={styles.footerLink}>Sign Up</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            </View>
+            <View style={styles.rememberForgotContainer}>
+              <Pressable
+                style={styles.rememberMeRow}
+                onPress={() => setRememberMe((prev) => !prev)}
+                hitSlop={8}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: rememberMe }}
+                accessibilityLabel="Remember me"
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Check size={13} color={colors.accentInk} strokeWidth={3} />}
+                </View>
+                <Text style={styles.rememberMeText}>Remember me</Text>
+              </Pressable>
+              <Pressable onPress={() => navigation.navigate('ForgotPassword')} hitSlop={8}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </Pressable>
+            </View>
+            <PixelButton title="Log In" onPress={onSubmitPassword} loading={loading} style={styles.loginBtn} textStyle={styles.loginBtnText} />
+            {hasReturningSession && (
+              <>
+                <View style={styles.dividerContainer}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or continue with</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                <View style={styles.quickLoginRow}>
+                  <TouchableOpacity style={[styles.quickLoginBtn, !biometricEnabled && styles.quickLoginBtnFull]} onPress={() => setScreen('pin')}>
+                    <KeyRound size={18} color={colors.onSurface} />
+                    <Text style={styles.quickLoginText}>PIN</Text>
+                  </TouchableOpacity>
+                  {biometricEnabled && (
+                    <TouchableOpacity style={styles.quickLoginBtn} onPress={() => setScreen('pin')}>
+                      <Fingerprint size={18} color={colors.onSurface} />
+                      <Text style={styles.quickLoginText}>Biometric</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
+            
+            {/* Terms Link */}
+            <View style={styles.legalContainer}>
+              <Text style={styles.legalText}>
+                By continuing, you agree to our{' '}
+                <Text style={styles.legalLink} onPress={() => setTermsModalVisible(true)}>
+                  Terms of Service
+                </Text>
+                {' and '}
+                <Text style={styles.legalLink} onPress={() => setTermsModalVisible(true)}>
+                  Privacy Policy
+                </Text>
+              </Text>
+            </View>
+          </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Pressable onPress={() => navigation.navigate('SignUp')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={styles.footerLink}>Sign Up</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Terms Modal */}
+      <TermsModal
+        visible={termsModalVisible}
+        onAgree={handleAgreeTerms}
+        onDecline={handleDeclineTerms}
+      />
+    </>
   );
 }
+
+// Terms Modal Component
+const TermsModal = ({ visible, onAgree, onDecline }) => {
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createTermsModalStyles(), [mode, accent]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onDecline}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Terms of Service & Privacy Policy</Text>
+            <Pressable onPress={onDecline} hitSlop={8}>
+              <X size={24} color={colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <Text style={styles.sectionTitle}>Terms of Service</Text>
+            <Text style={styles.termsText}>
+              By using Unfiltered, you agree to the following terms:
+            </Text>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                This app is created for academic purposes as part of an HCI & UX Design project.
+              </Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                All data entered is for demonstration purposes only and is not stored permanently.
+              </Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                You are responsible for the content you create and share within the app.
+              </Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                The app is provided "as is" without warranties of any kind.
+              </Text>
+            </View>
+
+            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Privacy Policy</Text>
+            <Text style={styles.termsText}>
+              Your privacy matters to us. Here's how we handle your data:
+            </Text>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                No personal data is collected, stored, or shared with third parties.
+              </Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                All journal entries are stored locally on your device and are not transmitted to external servers.
+              </Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                Your email and password are used solely for authentication within the app.
+              </Text>
+            </View>
+            <View style={styles.bulletPoint}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>
+                No analytics or tracking tools are implemented in this application.
+              </Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <Text style={styles.acknowledgment}>
+              By tapping "I Agree", you acknowledge that you have read and understood these terms.
+            </Text>
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <Pressable style={[styles.modalBtn, styles.declineBtn]} onPress={onDecline}>
+              <Text style={styles.declineBtnText}>Decline</Text>
+            </Pressable>
+            <Pressable style={[styles.modalBtn, styles.agreeBtn]} onPress={onAgree}>
+              <Text style={styles.agreeBtnText}>I Agree</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const createTermsModalStyles = () => StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '85%',
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.onSurface,
+    flex: 1,
+    marginRight: 12,
+  },
+  modalContent: {
+    maxHeight: 400,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.onSurface,
+    marginBottom: 8,
+  },
+  termsText: {
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  bulletPoint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  bulletDot: {
+    fontSize: 14,
+    color: colors.accent,
+    marginRight: 8,
+    fontWeight: '700',
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+    lineHeight: 18,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderSoft,
+    marginVertical: 16,
+  },
+  acknowledgment: {
+    fontSize: 13,
+    color: colors.onSurface,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  declineBtn: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+  },
+  declineBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.onSurfaceVariant,
+  },
+  agreeBtn: {
+    backgroundColor: colors.accent,
+  },
+  agreeBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accentInk,
+  },
+});
 
 const createStyles = () => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
@@ -412,4 +698,24 @@ const createStyles = () => StyleSheet.create({
   methodOptionActive: { backgroundColor: colors.accent },
   methodOptionText: { fontSize: 13, fontWeight: '600', color: colors.onSurfaceVariant },
   methodOptionTextActive: { color: colors.accentInk },
+  
+  // Legal styles
+  legalContainer: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+    alignItems: 'center',
+  },
+  legalText: {
+    fontSize: 11,
+    color: colors.onSurfaceFaint,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  legalLink: {
+    color: colors.accent,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
 });
