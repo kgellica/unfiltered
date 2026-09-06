@@ -34,11 +34,16 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-    
+
     'google' => [
     'client_id' => env('GOOGLE_CLIENT_ID'),
     'client_secret' => env('GOOGLE_CLIENT_SECRET'),
     'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
+    'gemini' => [
+        'key' => env('AQ.Ab8RN6JSmiFVhI_pFs0blFG1wGsQvOSUhWQcgXkk8NdqBiAgxw'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
     ],
 
 ];
