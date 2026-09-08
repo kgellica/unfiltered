@@ -13,7 +13,7 @@ class GeminiService
     public function __construct()
     {
         $this->apiKey = config('services.gemini.key');
-        $this->model = config('services.gemini.model', 'gemini-2.0-flash');
+        $this->model = config('services.gemini.model', 'gemini-3.6-flash');
     }
 
     public function isConfigured(): bool
@@ -22,66 +22,75 @@ class GeminiService
     }
 
     /**
-     * Generates a short, warm daily affirmation. Returns null on any
-     * failure so the caller can fall back to a local preset instead of
-     * breaking the request.
+     * Generates a short AI summary of a single journal entry's plain-text
+     * content using Google Gemini API. Returns null on any failure
+     * (including empty/whitespace-only content) so the caller can show
+     * a friendly message instead of a broken summary.
      */
-    public function generateAffirmation(): ?string
+    public function generateSummary(string $entryText): ?string
     {
-        $prompt = "Write ONE short, warm daily affirmation for a personal journaling app, in lowercase, "
-            . "second person ('i am...' / 'my...'), 1 sentence, max 16 words, gentle and encouraging tone, "
-            . "end with a single fitting emoji. Reply with ONLY the affirmation text, nothing else, no quotes.";
+        $entryText = trim($entryText);
+        if ($entryText === '') {
+            return null;
+        }
 
-        return $this->generate($prompt, temperature: 1.0, maxOutputTokens: 40);
+        // If the entry is too short to summarize reasonably (e.g. just random gibberish or a couple letters)
+        if (mb_strlen($entryText) < 5) {
+            return null;
+        }
+
+        // Keep the entry text bounded so we do not send unbounded payload.
+        $entryText = mb_substr($entryText, 0, 6000);
+
+        $prompt = "You are an empathetic, insightful journal companion. "
+            . "Provide a concise 1-2 sentence summary (maximum 40 words total) of the following personal journal entry. "
+            . "Maintain a warm, reflective, and neutral tone. Do not refer to 'the author', 'the writer', or 'the user'. "
+            . "Do not include headings, bullets, markdown formatting, or quotation marks. Output ONLY the summary text.\n\n"
+            . "Journal entry:\n\"\"\"\n{$entryText}\n\"\"\"";
+
+        return $this->generate($prompt, temperature: 0.7, maxOutputTokens: 150);
     }
 
-    /**
-     * Generates a short journal writing prompt to help someone start
-     * today's entry.
-     */
-    public function generateJournalPrompt(): ?string
-    {
-        $prompt = "Write ONE short, thoughtful journal writing prompt to help someone start today's journal entry. "
-            . "One sentence, max 14 words, warm and reflective tone, phrased as an instruction or gentle question "
-            . "(e.g. 'Write about a small moment that made you smile today.'). "
-            . "Reply with ONLY the prompt text, nothing else, no quotes.";
-
-        return $this->generate($prompt, temperature: 1.0, maxOutputTokens: 40);
-    }
-
-    protected function generate(string $prompt, float $temperature = 0.9, int $maxOutputTokens = 80): ?string
+    protected function generate(string $prompt, float $temperature = 0.7, int $maxOutputTokens = 150): ?string
     {
         if (! $this->isConfigured()) {
+            Log::warning('Gemini API key is not configured');
             return null;
         }
 
         try {
-            $response = Http::timeout(12)->retry(1, 200)->post(
-                // API key travels as a query param per Google's API. This call is
-                // made server-to-server — the key never reaches the mobile app or
-                // appears in the client's network traffic.
-                "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}",
-                [
-                    'contents' => [
-                        ['role' => 'user', 'parts' => [['text' => $prompt]]],
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
+
+            $response = Http::timeout(10)->post($url, [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt],
+                        ],
                     ],
-                    'generationConfig' => [
-                        'temperature' => $temperature,
-                        'maxOutputTokens' => $maxOutputTokens,
-                    ],
-                ]
-            );
+                ],
+                'generationConfig' => [
+                    'temperature' => $temperature,
+                    'maxOutputTokens' => $maxOutputTokens,
+                ],
+            ]);
 
             if ($response->failed()) {
-                Log::warning('Gemini API error', ['status' => $response->status(), 'body' => $response->body()]);
+                Log::warning('Gemini API error', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
                 return null;
             }
 
-            $text = data_get($response->json(), 'candidates.0.content.parts.0.text');
+            $candidates = $response->json('candidates', []);
+            $text = data_get($candidates, '0.content.parts.0.text');
+
             if (! $text) {
                 return null;
             }
 
+            // Remove any stray quotes around the output
             return trim(preg_replace('/^["\'“]|["\'”]$/u', '', trim($text)));
         } catch (\Throwable $e) {
             Log::warning('Gemini request failed: ' . $e->getMessage());

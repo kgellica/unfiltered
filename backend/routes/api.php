@@ -29,7 +29,11 @@ Route::get('/health', fn() => response()->json(['status' => 'ok', 'message' => '
     Route::get('/entries/stats', [EntryController::class, 'stats']);
     Route::apiResource('entries', EntryController::class);
     Route::post('/uploads', [UploadController::class, 'store']);
-    // Throttled — each call hits Gemini, so keep it modest per user.
-    Route::get('/ai/affirmation',    [AiController::class, 'affirmation'])->middleware('throttle:20,1');
-    Route::get('/ai/journal-prompt', [AiController::class, 'journalPrompt'])->middleware('throttle:20,1');
+    // Throttled — each call hits Groq, so keep it modest per user.
+    // Raised from 20/min: Expo Fast Refresh remounts the affirmation/prompt
+    // components on every file save, and each mount fires a request, so 20
+    // was tripping constantly during normal development.
+    Route::get('/ai/affirmation',    [AiController::class, 'affirmation'])->middleware('throttle:60,1');
+    Route::get('/ai/journal-prompt', [AiController::class, 'journalPrompt'])->middleware('throttle:60,1');
+    Route::get('/entries/{entry}/ai-summary', [AiController::class, 'entrySummary'])->middleware('throttle:60,1');
 });
