@@ -1,17 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   Image,
-  ActivityIndicator,
-  Platform,
 } from 'react-native';
-import { Calendar, Mic, Sparkles } from 'lucide-react-native';
+import { Calendar, Mic } from 'lucide-react-native';
 import { colors, radius } from '../../theme/theme';
-import { useTheme } from '../../context/ThemeContext';
-import { generateEntrySummary } from '../../api/gemini';
 import { formatDateAndTime } from './journalDateUtils';
 
 const MOOD_META = {
@@ -23,34 +19,12 @@ const MOOD_META = {
 };
 
 export default React.memo(function EntryCard({ item, onPress }) {
-  const { mode, accent } = useTheme();
-  const styles = useMemo(() => createStyles(), [mode, accent]);
-
   const mood = MOOD_META[item.mood] || MOOD_META.good;
   const plainText = (item.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const tags = item.tags || [];
   const firstPhoto = Array.isArray(item.photo_path) ? item.photo_path[0] : item.photo_path;
   const hasPhoto = !!firstPhoto;
   const hasVoice = !!item.voice_path;
-
-  // Per-card AI summary state — scoped strictly to this single entry only.
-  const [summary, setSummary] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summaryError, setSummaryError] = useState(false);
-
-  const handleSummarize = async () => {
-    if (summaryLoading) return;
-    setSummaryLoading(true);
-    setSummaryError(false);
-    const generated = await generateEntrySummary(item.id);
-    setSummaryLoading(false);
-    if (generated) {
-      setSummary(generated);
-    } else {
-      setSummary(null);
-      setSummaryError(true);
-    }
-  };
 
   return (
     <Pressable
@@ -117,27 +91,11 @@ export default React.memo(function EntryCard({ item, onPress }) {
         )}
         <Text style={styles.cardOpenLink}>open ›</Text>
       </View>
-
-      {summaryLoading ? (
-        <View style={styles.summaryBox}>
-          <ActivityIndicator size="small" color={colors.accent} />
-          <Text style={styles.summaryLoadingText}>summarizing...</Text>
-        </View>
-      ) : summary ? (
-        <View style={styles.summaryBox}>
-          <Sparkles size={12} color={colors.accent} strokeWidth={2.4} />
-          <Text style={styles.summaryText}>{summary}</Text>
-        </View>
-      ) : summaryError ? (
-        <Text style={styles.summaryErrorText}>couldn't summarize this entry — try again.</Text>
-      ) : null}
-
-      {/* FAB removed from here */}
     </Pressable>
   );
 });
 
-const createStyles = () => StyleSheet.create({
+const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -217,7 +175,7 @@ const createStyles = () => StyleSheet.create({
   voiceBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.accentInk,
   },
   voicePreview: {
     flexDirection: 'row',
@@ -282,35 +240,5 @@ const createStyles = () => StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: colors.accent,
-  },
-  // FAB styles removed from here
-  summaryBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-  },
-  summaryLoadingText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: colors.onSurfaceVariant,
-  },
-  summaryText: {
-    flex: 1,
-    fontSize: 12.5,
-    lineHeight: 17,
-    color: colors.onSurfaceVariant,
-    fontStyle: 'italic',
-  },
-  summaryErrorText: {
-    marginTop: 10,
-    paddingTop: 10,
-    fontSize: 11.5,
-    color: colors.error,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
   },
 });

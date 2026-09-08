@@ -26,14 +26,16 @@ import ScrollableTextInput from '../components/ScrollableTextInput';
 import PromptBar from '../components/PromptBar';
 import EditorToolbar from '../components/EditorToolbar';
 import { analyzeMood } from '../utils/moodAnalyzer';
+import MoodFace from '../components/MoodFace';
 import {
   Camera, Mic, Square, Play, Pause, X, Trash2, Plus, Minus, ChevronLeft, ChevronRight,
-  Sparkles,
+  Sparkles, Bot, RefreshCw,
   ChevronDown, ChevronUp, Info,
 } from 'lucide-react-native';
 import { colors, radius, spacing } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
+import { generateEntrySummary } from '../api/gemini';
 
 const BG_COLOR_PRESETS = [
   '#FFFFFF', '#FFF3E0', '#FCE4EC', '#E8F5E9', '#E3F2FD', '#F3E5F5', '#FFFDE7', '#EFEBE9',
@@ -103,6 +105,14 @@ export default function NewEntryScreen({ route, navigation }) {
   const moodDebounceRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
+
+  // AI summary chat panel — anchored to the in-entry FAB, scoped to this
+  // single entry only.
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState(false);
+  const summaryFade = useRef(new Animated.Value(0)).current;
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -192,6 +202,38 @@ export default function NewEntryScreen({ route, navigation }) {
   };
 
   const dismissSuggestedMood = () => setSuggestedMood(null);
+
+  const runSummary = async () => {
+    if (!entryId) return;
+    setSummaryLoading(true);
+    setSummaryError(false);
+    const generated = await generateEntrySummary(entryId);
+    setSummaryLoading(false);
+    if (generated) {
+      setSummary(generated);
+    } else {
+      setSummary(null);
+      setSummaryError(true);
+    }
+  };
+
+  const openSummaryPanel = () => {
+    setSummaryOpen(true);
+    Animated.timing(summaryFade, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+    if (!summary && !summaryLoading) runSummary();
+  };
+
+  const closeSummaryPanel = () => {
+    Animated.timing(summaryFade, {
+      toValue: 0,
+      duration: 140,
+      useNativeDriver: true,
+    }).start(() => setSummaryOpen(false));
+  };
 
   const pickPhoto = async () => {
     if (photoUris.length >= MAX_PHOTOS) {
@@ -780,16 +822,20 @@ export default function NewEntryScreen({ route, navigation }) {
                     onPress={() => setMood(key)}
                     style={[
                       styles.moodChip,
-                      { 
-                        backgroundColor: active ? m.color : colors.surfaceContainerLow,
-                        borderColor: active ? m.color : colors.outlineVariant,
-                        borderWidth: active ? 2 : 1.5,
-                      }
+                      {
+                        borderColor: active ? m.color : 'transparent',
+                        borderWidth: active ? 1.5 : 1.5,
+                      },
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel={`Mood: ${m.label}`}
                   >
-                    <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                    <MoodFace
+                      mood={key}
+                      size={26}
+                      color={active ? m.color : colors.onSurfaceVariant}
+                      active={active}
+                    />
                     <Text style={[styles.moodLabel, active && styles.moodLabelActive]}>{m.label}</Text>
                   </Pressable>
                 );
@@ -1055,6 +1101,84 @@ export default function NewEntryScreen({ route, navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* AI summary FAB — lives inside the journal entry itself, not the card */}
+      {isEditing && !summaryOpen && (
+        <Pressable
+          style={({ pressed }) => [styles.summaryFab, pressed && styles.summaryFabPressed]}
+          onPress={openSummaryPanel}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Summarize this entry with AI"
+        >
+          <Sparkles size={20} color={colors.accentInk} strokeWidth={2.4} />
+        </Pressable>
+      )}
+
+      {/* Chatbot-style summary panel */}
+      {isEditing && summaryOpen && (
+        <Animated.View
+          style={[
+            styles.summaryPanel,
+            {
+              opacity: summaryFade,
+              transform: [
+                {
+                  translateY: summaryFade.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [16, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.summaryPanelHeader}>
+            <View style={styles.summaryPanelHeaderLeft}>
+              <View style={styles.summaryPanelAvatar}>
+                <Bot size={15} color={colors.accentInk} strokeWidth={2.4} />
+              </View>
+              <Text style={styles.summaryPanelTitle}>journal insights</Text>
+            </View>
+            <Pressable
+              onPress={closeSummaryPanel}
+              hitSlop={8}
+              style={styles.summaryPanelCloseBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close AI summary"
+            >
+              <X size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
+            </Pressable>
+          </View>
+
+          <View style={styles.summaryPanelBody}>
+            {summaryLoading ? (
+              <View style={styles.summaryTypingRow}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <Text style={styles.summaryTypingText}>reading your entry...</Text>
+              </View>
+            ) : summaryError ? (
+              <Text style={styles.summaryErrorText}>couldn't summarize this entry — try again.</Text>
+            ) : summary ? (
+              <Text style={styles.summaryBodyText}>{summary}</Text>
+            ) : null}
+          </View>
+
+          {!summaryLoading && (
+            <View style={styles.summaryPanelFooter}>
+              <Pressable
+                onPress={runSummary}
+                style={styles.summaryRetryBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Retry AI summary"
+              >
+                <RefreshCw size={13} color={colors.accent} strokeWidth={2.4} />
+                <Text style={styles.summaryRetryText}>retry</Text>
+              </Pressable>
+            </View>
+          )}
+        </Animated.View>
+      )}
 
       {/* Photo Viewer Modal with Pinch to Zoom */}
       <Modal
@@ -1436,23 +1560,22 @@ const createStyles = () => StyleSheet.create({
   moodRow: { 
     flexDirection: 'row', 
     flexWrap: 'nowrap',
-    gap: 6,
+    gap: 10,
     marginBottom: 4,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
   },
   moodChip: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 3,
     flex: 1,
     maxWidth: 62,
-    minWidth: 52,
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: radius.lg,
+    backgroundColor: 'transparent',
     borderWidth: 1.5,
   },
-  moodEmoji: { fontSize: 18 },
   moodLabel: { 
     fontSize: 9, 
     fontWeight: '600', 
@@ -1522,6 +1645,136 @@ const createStyles = () => StyleSheet.create({
     color: colors.error,
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  // AI summary FAB + chatbot-style panel — themed off the current
+  // accent/mode so it always matches the entry's own ambience.
+  summaryFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 52,
+    height: 52,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  summaryFabPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
+  },
+  summaryPanel: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 280,
+    maxHeight: 260,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.outlineVariant,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  summaryPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+    backgroundColor: colors.accentSoft,
+  },
+  summaryPanelHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryPanelAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryPanelTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.onSurface,
+  },
+  summaryPanelCloseBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryPanelBody: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  summaryTypingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryTypingText: {
+    fontSize: 12.5,
+    fontStyle: 'italic',
+    color: colors.onSurfaceVariant,
+  },
+  summaryBodyText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.onSurface,
+  },
+  summaryErrorText: {
+    fontSize: 12.5,
+    color: colors.error,
+  },
+  summaryPanelFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  summaryRetryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.accentSoft,
+  },
+  summaryRetryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accent,
   },
 
   // Photo Viewer Styles
