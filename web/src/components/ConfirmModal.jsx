@@ -49,12 +49,7 @@ export default function ConfirmModal({
         </button>
 
         {/* Icon Badge */}
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xs animate-cute-float"
-          style={{
-            background: confirmVariant === 'danger' ? '#fef2f2' : 'var(--accent-soft)',
-          }}
-        >
+        <div className="flex items-center justify-center animate-cute-float">
           {renderIcon()}
         </div>
 

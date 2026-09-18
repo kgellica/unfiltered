@@ -8,7 +8,6 @@ import Journal from './pages/Journal';
 import Memories from './pages/Memories';
 import CalendarView from './pages/CalendarView';
 import Affirmations from './pages/Affirmations';
-import Reminders from './pages/Reminders';
 import Settings from './pages/Settings';
 
 export default function App() {
@@ -45,7 +44,6 @@ export default function App() {
             <Route path="/memories" element={<Memories />} />
             <Route path="/calendar" element={<CalendarView />} />
             <Route path="/affirmations" element={<Affirmations />} />
-            <Route path="/reminders" element={<Reminders />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Route>

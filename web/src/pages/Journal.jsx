@@ -1,5 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Plus, BookOpen, Calendar, Tag as TagIcon, Search, X } from 'lucide-react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Plus,
+  Calendar,
+  Tag as TagIcon,
+  Search,
+  X,
+  Sparkles,
+  Settings,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useJournal } from '../hooks/useJournal';
 import TopBar from '../components/TopBar';
@@ -7,10 +19,24 @@ import StreakTrail from '../components/StreakTrail';
 import EntryCard from '../components/EntryCard';
 import EntryModal from '../components/EntryModal';
 import AnimatedGreeting from '../components/AnimatedGreeting';
-import { normalizeDateKey, formatDiaryDate } from '../lib/color';
+import ProfileDropdown from '../components/ProfileDropdown';
+import NewEntryButton from '../components/NewEntryButton';
+import StateMessage from '../components/StateMessage';
+import { normalizeDateKey, formatDiaryDate, parseDiaryDate } from '../lib/color';
+import { MONTH_DATA } from '../constants/calendar';
 
 export default function Journal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Get month filter from URL params
+  const filterMonth = searchParams.get('month');
+  const filterYear = searchParams.get('year');
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
   const {
     entries,
     streak,
@@ -28,6 +54,27 @@ export default function Journal() {
   const [query, setQuery] = useState('');
   const [date, setDate] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   const entryDates = useMemo(
     () => entries.map((e) => normalizeDateKey(e.entry_date)).filter(Boolean),
@@ -35,61 +82,82 @@ export default function Journal() {
   );
 
   const visibleEntries = useMemo(() => {
-    return entries.filter((e) => {
-      // Date filter
-      if (date && normalizeDateKey(e.entry_date) !== normalizeDateKey(date)) {
-        return false;
-      }
-      // Tag filter
-      if (
-        selectedTag &&
-        !(e.tags || []).some(
+    let filtered = entries;
+
+    // Apply month filter from URL
+    if (filterMonth !== null && filterYear !== null) {
+      const monthNum = parseInt(filterMonth);
+      const yearNum = parseInt(filterYear);
+      filtered = filtered.filter((e) => {
+        const d = parseDiaryDate(e.entry_date);
+        return d && d.getMonth() === monthNum && d.getFullYear() === yearNum;
+      });
+    }
+
+    // Date filter
+    if (date) {
+      filtered = filtered.filter((e) => normalizeDateKey(e.entry_date) === normalizeDateKey(date));
+    }
+
+    // Tag filter
+    if (selectedTag) {
+      filtered = filtered.filter((e) =>
+        (e.tags || []).some(
           (t) => (typeof t === 'string' ? t : t.name).toLowerCase() === selectedTag.toLowerCase()
         )
-      ) {
-        return false;
-      }
-      // Keyword query filter
-      if (query) {
-        const q = query.toLowerCase();
+      );
+    }
+
+    // Keyword query filter
+    if (query) {
+      const q = query.toLowerCase();
+      filtered = filtered.filter((e) => {
         const inTitle = e.title?.toLowerCase().includes(q);
         const inContent = (e.content || '').toLowerCase().includes(q);
-        if (!inTitle && !inContent) return false;
-      }
-      return true;
+        return inTitle || inContent;
+      });
+    }
+
+    // Sort from newest to oldest
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.entry_date);
+      const dateB = new Date(b.created_at || b.entry_date);
+      return dateB - dateA;
     });
-  }, [entries, date, selectedTag, query]);
+  }, [entries, filterMonth, filterYear, date, selectedTag, query]);
 
-  const hasActiveFilters = Boolean(date || selectedTag || query);
+  const hasActiveFilters = Boolean(date || selectedTag || query || filterMonth !== null);
 
-  const clearAllFilters = () => {
-    setDate('');
-    setSelectedTag('');
-    setQuery('');
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(visibleEntries.length / itemsPerPage));
+  const paginatedEntries = visibleEntries.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterMonth, filterYear, date, selectedTag, query]);
+
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Get month name for display
+  const monthName = filterMonth !== null ? MONTH_DATA[parseInt(filterMonth)]?.name : null;
+  const displayMonth = monthName ? `${monthName} ${filterYear}` : null;
 
   return (
     <div
       className="min-h-screen px-4 sm:px-8 md:px-12 py-8 transition-colors duration-200"
       style={{ background: 'var(--bg-page)' }}
     >
-      <div className="max-w-5xl mx-auto flex flex-col gap-7">
-        {/* Top Header: Animated Greeting & New Entry Button */}
+      <div className="max-w-6xl mx-auto flex flex-col gap-7">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <AnimatedGreeting userName={user?.name} />
-
-          <button
-            onClick={openNew}
-            className="flex items-center justify-center gap-2 h-12 px-5 rounded-2xl text-[14px] font-bold shrink-0 shadow-md transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer self-start sm:self-auto lowercase"
-            style={{
-              background: 'var(--accent)',
-              color: 'var(--accent-ink)',
-              boxShadow: '0 6px 20px -2px var(--accent-soft)',
-            }}
-          >
-            <Plus size={18} strokeWidth={2.5} />
-            <span>new entry 🌸</span>
-          </button>
+          <ProfileDropdown />
         </div>
 
         {/* Search, Date Filter, Tag Filter TopBar */}
@@ -102,84 +170,8 @@ export default function Journal() {
           selectedTag={selectedTag}
           onTagChange={setSelectedTag}
           user={user}
+          totalEntries={entries.length}
         />
-
-        {/* Active Filters Pill Bar (Allows removing individual filters) */}
-        {hasActiveFilters && (
-          <div className="flex items-center gap-2 flex-wrap -mt-3 text-xs lowercase">
-            <span className="font-bold text-[var(--ink-soft)]">active filters:</span>
-
-            {date && (
-              <span
-                className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold transition animate-cute-pop"
-                style={{
-                  background: 'var(--accent-soft)',
-                  color: 'var(--ink)',
-                  border: '1px solid var(--accent)',
-                }}
-              >
-                <Calendar size={12} style={{ color: 'var(--accent)' }} />
-                <span>{formatDiaryDate(date)}</span>
-                <button
-                  onClick={() => setDate('')}
-                  className="hover:opacity-75 cursor-pointer"
-                  title="remove date filter"
-                >
-                  <X size={13} />
-                </button>
-              </span>
-            )}
-
-            {selectedTag && (
-              <span
-                className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold transition animate-cute-pop"
-                style={{
-                  background: 'var(--accent-soft)',
-                  color: 'var(--ink)',
-                  border: '1px solid var(--accent)',
-                }}
-              >
-                <TagIcon size={12} style={{ color: 'var(--accent)' }} />
-                <span>#{selectedTag}</span>
-                <button
-                  onClick={() => setSelectedTag('')}
-                  className="hover:opacity-75 cursor-pointer"
-                  title="remove tag filter"
-                >
-                  <X size={13} />
-                </button>
-              </span>
-            )}
-
-            {query && (
-              <span
-                className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold transition animate-cute-pop"
-                style={{
-                  background: 'var(--accent-soft)',
-                  color: 'var(--ink)',
-                  border: '1px solid var(--accent)',
-                }}
-              >
-                <Search size={12} style={{ color: 'var(--accent)' }} />
-                <span>"{query}"</span>
-                <button
-                  onClick={() => setQuery('')}
-                  className="hover:opacity-75 cursor-pointer"
-                  title="remove search query"
-                >
-                  <X size={13} />
-                </button>
-              </span>
-            )}
-
-            <button
-              onClick={clearAllFilters}
-              className="text-[11.5px] font-bold text-[var(--accent)] hover:underline ml-1 cursor-pointer"
-            >
-              clear all ✕
-            </button>
-          </div>
-        )}
 
         {/* Wide Habit & Streak Tracker */}
         <StreakTrail streak={streak} entryDates={entryDates} />
@@ -191,83 +183,115 @@ export default function Journal() {
               className="text-lg font-bold lowercase flex items-center gap-2"
               style={{ color: 'var(--ink)' }}
             >
-              <BookOpen size={18} style={{ color: 'var(--accent)' }} />
-              <span>your journal entries</span>
-              <span
-                className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-              >
-                {visibleEntries.length}
-              </span>
+              <span>journal entries</span>
+              {displayMonth && (
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                >
+                  {displayMonth}
+                </span>
+              )}
+              {filterMonth !== null && (
+                <button
+                  onClick={() => {
+                    navigate('/journal');
+                    setCurrentPage(1);
+                  }}
+                  className="text-xs font-bold hover:underline"
+                  style={{ color: 'var(--ink-soft)' }}
+                >
+                  ✕ clear
+                </button>
+              )}
             </h2>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="text-xs font-bold text-[var(--accent)] hover:underline lowercase"
-              >
-                reset filters ✕
-              </button>
-            )}
+            <NewEntryButton onClick={openNew} />
           </div>
 
           {loading ? (
-            <div className="rounded-3xl py-16 text-center bg-white/40 border border-[var(--border-soft)] flex flex-col items-center gap-2">
-              <Sparkles className="animate-cute-float text-[var(--accent)]" size={24} />
-              <p className="text-[13.5px] font-semibold text-[var(--ink-soft)] lowercase">
-                gathering your memories... ✨
-              </p>
-            </div>
+            <StateMessage type="loading" variant="journal" />
           ) : visibleEntries.length === 0 ? (
-            <div
-              className="rounded-3xl py-16 px-6 text-center flex flex-col items-center gap-3 transition-all"
-              style={{
-                background: 'var(--surface)',
-                border: '2px dashed var(--border-soft)',
-              }}
-            >
-              <div
-                className="w-14 h-14 rounded-3xl flex items-center justify-center mb-1"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-              >
-                <BookOpen size={24} />
-              </div>
-              <p className="text-[16px] font-bold text-[var(--ink)] lowercase">
-                no entries match your active filters ☁️
-              </p>
-              <p className="text-[13px] font-medium max-w-sm text-[var(--ink-soft)] lowercase">
-                {hasActiveFilters
-                  ? `you have ${entries.length} total entries. try removing the date or tag filter above to reveal them.`
-                  : 'tap "new entry" to capture your first thought today.'}
-              </p>
-
-              {hasActiveFilters ? (
-                <button
-                  onClick={clearAllFilters}
-                  className="mt-2 px-5 py-2.5 rounded-2xl text-[13px] font-bold text-white transition hover:scale-105 cursor-pointer"
-                  style={{ background: 'var(--accent)' }}
-                >
-                  show all {entries.length} entries 🌸
-                </button>
-              ) : (
-                <button
-                  onClick={openNew}
-                  className="mt-2 px-5 py-2.5 rounded-2xl text-[13px] font-bold text-white transition hover:scale-105 cursor-pointer"
-                  style={{ background: 'var(--accent)' }}
-                >
-                  write your first thought today ✨
-                </button>
-              )}
-            </div>
+            <StateMessage
+              variant="journal"
+              title={hasActiveFilters ? 'no entries match your filters' : 'no entries yet'}
+              description={hasActiveFilters ? 'try clearing your filters' : 'start your first journal entry today'}
+              actionLabel={!hasActiveFilters ? '+ write entry' : undefined}
+              onAction={!hasActiveFilters ? openNew : undefined}
+            />
           ) : (
-            <div
-              className="grid gap-4 sm:gap-5"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}
-            >
-              {visibleEntries.map((entry) => (
-                <EntryCard key={entry.id} entry={entry} onOpen={openEntry} />
-              ))}
-            </div>
+            <>
+              <div
+                className="grid gap-4 sm:gap-5"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}
+              >
+                {paginatedEntries.map((entry) => (
+                  <EntryCard key={entry.id} entry={entry} onOpen={openEntry} />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-soft)] flex-wrap gap-3">
+                  <span className="text-[12px] font-medium text-[var(--ink-soft)]">
+                    showing {(currentPage - 1) * itemsPerPage + 1}-
+                    {Math.min(currentPage * itemsPerPage, visibleEntries.length)} of {visibleEntries.length} entries
+                  </span>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-xl transition disabled:opacity-30 hover:bg-black/5"
+                      style={{ color: 'var(--ink)' }}
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    
+                    <div className="flex gap-1">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => goToPage(pageNum)}
+                            className={`w-8 h-8 rounded-xl text-[13px] font-bold transition ${
+                              currentPage === pageNum
+                                ? 'text-white'
+                                : 'hover:bg-black/5'
+                            }`}
+                            style={{
+                              background: currentPage === pageNum ? 'var(--accent)' : 'transparent',
+                              color: currentPage === pageNum ? 'white' : 'var(--ink)',
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-xl transition disabled:opacity-30 hover:bg-black/5"
+                      style={{ color: 'var(--ink)' }}
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

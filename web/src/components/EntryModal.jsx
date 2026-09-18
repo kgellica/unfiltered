@@ -4,19 +4,13 @@ import {
   Trash2,
   Check,
   X,
-  Smile,
-  Palette,
   List,
   Tag as TagIcon,
   Calendar,
-  Sparkles,
-  Plus,
-  Heart,
   ListOrdered,
   AlignLeft,
 } from 'lucide-react';
 import { CARD_COLORS, MOOD_META, getReadableText, formatDiaryDate, formatTime, normalizeDateKey } from '../lib/color';
-
 import ConfirmModal from './ConfirmModal';
 
 export default function EntryModal({ entry, onClose, onSave, onDelete, allExistingTags = [] }) {
@@ -31,21 +25,14 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
   const [tagList, setTagList] = useState(
     (entry?.tags || []).map((t) => (typeof t === 'string' ? t : t.name))
   );
-
-  // Bottom toolbar popover states: null | 'mood' | 'color' | 'tag'
   const [activePopup, setActivePopup] = useState(null);
-
-  // Delete confirmation modal state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  // List mode 3-way toggle: 0 = normal, 1 = numbered, 2 = bullet
   const [listMode, setListMode] = useState(0);
-
-  // New tag input state in tag popup
   const [newTagInput, setNewTagInput] = useState('');
 
   const bodyRef = useRef(null);
   const dateInputRef = useRef(null);
+  const popupRef = useRef(null);
 
   useEffect(() => {
     if (bodyRef.current) {
@@ -53,11 +40,27 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
     }
   }, [entry?.id]);
 
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (popupRef.current && !popupRef.current.contains(e.target)) {
+        setActivePopup(null);
+      }
+    };
+
+    if (activePopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activePopup]);
+
   const togglePopup = (name) => {
     setActivePopup((prev) => (prev === name ? null : name));
   };
 
-  // 3-way List Toggle: Normal -> Numbered -> Bullet -> Normal
   const handleListCycle = () => {
     if (bodyRef.current) {
       bodyRef.current.focus();
@@ -66,8 +69,8 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
       document.execCommand('insertOrderedList', false, null);
       setListMode(1);
     } else if (listMode === 1) {
-      document.execCommand('insertOrderedList', false, null); // turn off ordered
-      document.execCommand('insertUnorderedList', false, null); // turn on bullet
+      document.execCommand('insertOrderedList', false, null);
+      document.execCommand('insertUnorderedList', false, null);
       setListMode(2);
     } else {
       document.execCommand('insertUnorderedList', false, null);
@@ -77,7 +80,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
 
   const handleAddTag = (e) => {
     if (e) e.preventDefault();
-    const clean = newTagInput.trim().toLowerCase().replace(/^#/, '');
+    const clean = newTagInput.trim();
     if (clean && !tagList.includes(clean)) {
       setTagList([...tagList, clean]);
     }
@@ -85,7 +88,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
   };
 
   const handleToggleTag = (t) => {
-    const clean = t.toLowerCase();
+    const clean = t;
     if (tagList.includes(clean)) {
       setTagList(tagList.filter((x) => x !== clean));
     } else {
@@ -132,16 +135,8 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      {/* Backdrop overlay for closing active popup when clicked */}
-      {activePopup && (
-        <div
-          className="fixed inset-0 z-40 cursor-default"
-          onClick={() => setActivePopup(null)}
-        />
-      )}
-
       <div
-        className="w-full max-w-2xl min-h-[560px] max-h-[88vh] rounded-3xl flex flex-col relative shadow-2xl animate-cute-pop transition-colors duration-200"
+        className="w-full max-w-4xl min-h-[560px] max-h-[88vh] rounded-3xl flex flex-col relative shadow-2xl animate-cute-pop transition-colors duration-200"
         style={{
           background: color || 'var(--surface)',
           border: color ? '1.5px solid rgba(0,0,0,0.08)' : '1.5px solid var(--border-soft)',
@@ -153,7 +148,6 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
           className="flex items-center justify-between px-6 py-4 border-b shrink-0 rounded-t-3xl"
           style={{ borderColor: color ? 'rgba(0,0,0,0.08)' : 'var(--border-soft)' }}
         >
-          {/* Left: Date Display / Picker */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => editing && dateInputRef.current?.showPicker?.()}
@@ -180,16 +174,15 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
             )}
           </div>
 
-          {/* Right: Actions */}
           <div className="flex items-center gap-2">
             {editing ? (
               <button
                 onClick={handleSave}
-                className="flex items-center gap-1.5 text-[13px] font-bold shadow-sm transition-transform hover:scale-105"
+                className="text-[13px] font-bold transition-transform hover:scale-105 p-1"
                 style={{ color: 'var(--accent)' }}
                 aria-label="save entry"
               >
-                <Check size={16} strokeWidth={2.5} />
+                <Check size={20} strokeWidth={2.5} />
               </button>
             ) : (
               <button
@@ -213,27 +206,17 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                 <Trash2 size={16} />
               </button>
             )}
-
-            {/* <button
-              onClick={onClose}
-              className="p-2 rounded-2xl hover:bg-black/5 transition ml-1"
-              style={{ color: ink }}
-              aria-label="close modal"
-            >
-              <X size={19} />
-            </button> */}
           </div>
         </div>
 
         {/* Modal Body / Editor Area */}
         <div className="px-6 md:px-8 py-5 flex-1 overflow-y-auto flex flex-col">
-          {/* Title Field */}
           {editing ? (
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="title of your day... ✍️"
-              className="w-full bg-transparent outline-none text-xl md:text-2xl font-bold tracking-tight mb-4 placeholder:text-black/30 lowercase"
+              placeholder="title of your day..."
+              className="w-full bg-transparent outline-none text-xl md:text-2xl font-bold tracking-tight mb-4 placeholder:text-black/30"
               style={{ fontFamily: 'var(--font-display)', color: ink }}
             />
           ) : (
@@ -245,7 +228,6 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
             </h2>
           )}
 
-          {/* Active Tags Mini-Row when Viewing */}
           {!editing && tagList.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-4">
               {tagList.map((t) => (
@@ -260,26 +242,25 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
             </div>
           )}
 
-          {/* Content Editor / Viewer */}
           <div
             ref={bodyRef}
             contentEditable={editing}
             suppressContentEditableWarning
             className={`diary-content flex-1 text-[15px] leading-relaxed outline-none min-h-[220px] font-medium ${editing ? 'empty:before:content-[attr(data-placeholder)] empty:before:opacity-40' : ''
               }`}
-            data-placeholder="pour your thoughts here... unfiltered, calm, and true. ✨"
+            data-placeholder="pour your thoughts here... unfiltered, calm, and true."
             style={{ color: ink }}
           />
         </div>
 
-        {/* Bottom Edit Action Toolbar (Only in Edit Mode) */}
+        {/* Bottom Edit Action Toolbar */}
         {editing && (
           <div
             className="px-6 py-3 border-t shrink-0 relative flex items-center justify-around bg-black/[0.02] rounded-b-3xl"
             style={{ borderColor: color ? 'rgba(0,0,0,0.08)' : 'var(--border-soft)' }}
           >
-            {/* 1. Mood Button & Popover */}
-            <div className="relative">
+            {/* Mood */}
+            <div className="relative" ref={activePopup === 'mood' ? popupRef : null}>
               <button
                 type="button"
                 onClick={() => togglePopup('mood')}
@@ -301,7 +282,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                   }}
                 >
                   <span className="text-[11.5px] font-bold text-[var(--ink-soft)] block mb-2 px-1">
-                    how are you feeling? ✨
+                    how are you feeling?
                   </span>
                   <div className="grid grid-cols-5 gap-1.5">
                     {Object.entries(MOOD_META).map(([key, m]) => (
@@ -327,8 +308,8 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
               )}
             </div>
 
-            {/* 2. Color Button & Popover */}
-            <div className="relative">
+            {/* Color */}
+            <div className="relative" ref={activePopup === 'color' ? popupRef : null}>
               <button
                 type="button"
                 onClick={() => togglePopup('color')}
@@ -369,7 +350,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                         }}
                         className="flex flex-col items-center gap-1 p-1.5 rounded-2xl transition hover:scale-105"
                         style={{
-                          background: color === c.hex ? 'var(--accent-soft)' : 'transparent',
+                          background: 'transparent',
                         }}
                         title={c.name}
                       >
@@ -391,7 +372,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
               )}
             </div>
 
-            {/* 3. List 3-Way Toggle Button */}
+            {/* List */}
             <div className="relative">
               <button
                 type="button"
@@ -399,7 +380,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                 className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${listMode > 0 ? 'bg-[var(--accent-soft)] scale-105' : 'hover:bg-black/5'
                   }`}
                 style={{ color: ink }}
-                title={`list mode: ${listMode === 1 ? '1. numbered' : listMode === 2 ? '• bulleted' : 'normal text'
+                title={`list mode: ${listMode === 1 ? 'numbered' : listMode === 2 ? 'bulleted' : 'normal text'
                   }`}
               >
                 {listMode === 1 ? (
@@ -409,16 +390,12 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                 ) : (
                   <AlignLeft size={20} />
                 )}
-                <span className="text-[11.5px] font-bold flex items-center gap-1">
-                  list
-                 {/*  {listMode === 1 && <span className="text-[9px] text-[var(--accent)]">(1.)</span>}
-                  {listMode === 2 && <span className="text-[9px] text-[var(--accent)]">(•)</span>} */}
-                </span>
+                <span className="text-[11.5px] font-bold">list</span>
               </button>
             </div>
 
-            {/* 4. Tag Button & Popover */}
-            <div className="relative">
+            {/* Tags */}
+            <div className="relative" ref={activePopup === 'tag' ? popupRef : null}>
               <button
                 type="button"
                 onClick={() => togglePopup('tag')}
@@ -453,7 +430,6 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                     manage entry tags
                   </span>
 
-                  {/* Attached tags */}
                   <div className="flex flex-wrap gap-1.5 mb-3 min-h-[28px]">
                     {tagList.length === 0 ? (
                       <span className="text-[11px] text-[var(--ink-faint)] italic">
@@ -479,7 +455,6 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                     )}
                   </div>
 
-                  {/* Quick Select from existing tags */}
                   {allExistingTags.length > 0 && (
                     <div className="mb-3 pt-2 border-t border-[var(--border-soft)]">
                       <span className="text-[10.5px] font-bold text-[var(--ink-soft)] block mb-1.5">
@@ -487,7 +462,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                       </span>
                       <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                         {allExistingTags.map((t) => {
-                          const isAttached = tagList.includes(t.toLowerCase());
+                          const isAttached = tagList.includes(t);
                           return (
                             <button
                               key={t}
@@ -506,7 +481,6 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                     </div>
                   )}
 
-                  {/* Add new tag form */}
                   <form
                     onSubmit={handleAddTag}
                     className="pt-2 border-t border-[var(--border-soft)] flex items-center gap-2"
@@ -532,10 +506,9 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
         )}
       </div>
 
-      {/* Cute Custom Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
-        title="delete this lovely entry? 🧸"
+        title="delete this entry?"
         message="this reflection will be erased forever. are you sure you want to let it go?"
         confirmText="delete forever"
         cancelText="keep entry"

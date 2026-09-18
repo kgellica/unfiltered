@@ -104,13 +104,11 @@ body {
   color: var(--ink);
   letter-spacing: 0.01em;
   font-weight: 500;
-  text-transform: lowercase;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   letter-spacing: 0.015em;
-  text-transform: lowercase;
 }
 
 button, input, textarea, select {
@@ -231,4 +229,38 @@ button, input, textarea, select {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-strong);
+}
+
+/* Active Navigation Item Styling */
+.nav-item-active {
+  background-color: var(--bg-page); /* Matches main content page background */
+  border-top-left-radius: 1.5rem;
+  border-bottom-left-radius: 1.5rem;
+  position: relative;
+}
+
+/* Inverted Notch Top Right */
+.nav-notch-top {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border-bottom-right-radius: 20px;
+  box-shadow: 6px 6px 0 0 var(--bg-page);
+  pointer-events: none;
+}
+
+/* Inverted Notch Bottom Right */
+.nav-notch-bottom {
+  position: absolute;
+  bottom: -20px;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border-top-right-radius: 20px;
+  box-shadow: 6px -6px 0 0 var(--bg-page);
+  pointer-events: none;
 }

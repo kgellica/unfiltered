@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../api/axios';
-import { Eye, EyeOff, Lock, Mail, User as UserIcon } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User as UserIcon, X } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
 export default function Auth() {
@@ -27,6 +27,9 @@ export default function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -35,8 +38,6 @@ export default function Auth() {
     setForgotData({ ...forgotData, [e.target.name]: e.target.value });
   };
 
-  // Simple, self-service password reset: no email/OTP round trip — the
-  // user confirms their account email and sets a new password directly.
   const handleForgotSubmit = async (e) => {
     e.preventDefault();
     setForgotError(null);
@@ -80,14 +81,14 @@ export default function Auth() {
         window.location.reload();
       } catch (err) {
         setError(
-          err.response?.data?.message || 'google sign-in failed. please try again. ☁️'
+          err.response?.data?.message || 'Google sign-in failed. Please try again.'
         );
       } finally {
         setLoading(false);
       }
     },
     onError: () => {
-      setError('google sign-in popup was closed or failed. ☁️');
+      setError('Google sign-in popup was closed or failed.');
     },
   });
 
@@ -95,6 +96,13 @@ export default function Auth() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    // Check terms agreement for registration
+    if (!isLogin && !agreeToTerms) {
+      setError('Please agree to the terms and conditions to continue.');
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isLogin) {
@@ -109,7 +117,7 @@ export default function Auth() {
       }
     } catch (err) {
       setError(
-        err.response?.data?.message || 'something went wrong. please check your credentials. ☁️'
+        err.response?.data?.message || 'Something went wrong. Please check your credentials.'
       );
     } finally {
       setLoading(false);
@@ -118,7 +126,7 @@ export default function Auth() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 lowercase transition-colors duration-200"
+      className="min-h-screen flex items-center justify-center p-4 transition-colors duration-200"
       style={{ background: 'var(--bg-page)' }}
     >
       <div
@@ -248,239 +256,379 @@ export default function Auth() {
           </>
         ) : (
           <>
-        {/* Brand Header with Logo */}
-        <div className="text-center flex flex-col items-center gap-1.5">
-          <img
-            src={logoImg}
-            alt="unfiltered logo"
-            className="w-24 h-24 rounded-3xl object-contain animate-cute-float"
-          />
-          <h1
-            className="text-4xl font-extrabold tracking-tight mt-0.5"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}
-          >
-            unfiltered
-          </h1>
-          <p className="text-[13.5px] font-medium" style={{ color: 'var(--ink-soft)' }}>
-            {isLogin
-              ? 'welcome back to your cozy journaling nook 🌸'
-              : 'create a safe space for your unfiltered thoughts ✨'}
-          </p>
-        </div>
-
-        {error && (
-          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[13px] font-semibold rounded-2xl">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div>
-              <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-                <UserIcon size={13} /> your name
-              </label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                style={{
-                  background: 'var(--surface-muted)',
-                  borderColor: 'var(--border-soft)',
-                  color: 'var(--ink)',
-                }}
-                placeholder="e.g. karylle 🌸"
+            {/* Brand Header with Logo */}
+            <div className="text-center flex flex-col items-center gap-1.5">
+              <img
+                src={logoImg}
+                alt="Unfiltered Logo"
+                className="w-32 h-32 rounded-3xl object-contain animate-cute-float"
               />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-              <Mail size={13} /> email address
-            </label>
-            <input
-              type="email"
-              name="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-              style={{
-                background: 'var(--surface-muted)',
-                borderColor: 'var(--border-soft)',
-                color: 'var(--ink)',
-              }}
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-              <Lock size={13} /> password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                style={{
-                  background: 'var(--surface-muted)',
-                  borderColor: 'var(--border-soft)',
-                  color: 'var(--ink)',
-                }}
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-                aria-label={showPassword ? 'hide password' : 'show password'}
+              <h1
+                className="text-4xl font-extrabold tracking-tight mt-0.5"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+                unfiltered
+              </h1>
+              <p className="text-[13.5px] font-medium" style={{ color: 'var(--ink-soft)' }}>
+                {isLogin
+                  ? 'welcome back to your cozy journaling nook'
+                  : 'create a safe space for your unfiltered thoughts'}
+              </p>
             </div>
-            {isLogin && (
-              <div className="mt-2 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-[11.5px] font-bold text-[var(--ink-soft)] cursor-pointer select-none">
-                  <span
-                    onClick={() => setRememberMe((prev) => !prev)}
-                    className="flex items-center justify-center w-4 h-4 rounded-md border transition"
-                    style={{
-                      borderColor: 'var(--border-soft)',
-                      background: rememberMe ? 'var(--accent)' : 'var(--surface-muted)',
-                    }}
-                  >
-                    {rememberMe && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" strokeWidth="3">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </span>
-                  remember me
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForgotError(null);
-                    setForgotSuccess(null);
-                    setView('forgot');
-                  }}
-                  className="text-[11.5px] font-bold text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-                >
-                  forgot password?
-                </button>
+
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[13px] font-semibold rounded-2xl">
+                {error}
               </div>
             )}
-          </div>
 
-          {!isLogin && (
-            <div>
-              <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-                <Lock size={13} /> confirm password
-              </label>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isLogin && (
+                <div>
+                  <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                    <UserIcon size={13} /> Your Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                    style={{
+                      background: 'var(--surface-muted)',
+                      borderColor: 'var(--border-soft)',
+                      color: 'var(--ink)',
+                    }}
+                    placeholder="E.g. Karylle"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                  <Mail size={13} /> Email Address
+                </label>
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  name="password_confirmation"
+                  type="email"
+                  name="email"
                   required
-                  value={formData.password_confirmation}
+                  value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                  className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
                   style={{
                     background: 'var(--surface-muted)',
                     borderColor: 'var(--border-soft)',
                     color: 'var(--ink)',
                   }}
-                  placeholder="••••••••"
+                  placeholder="You@example.com"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-                  aria-label={showConfirmPassword ? 'hide confirm password' : 'show confirm password'}
-                >
-                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
               </div>
-            </div>
-          )}
 
-          <div className="pt-1">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-3 py-3 rounded-2xl text-[14px] font-bold shadow-md transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
-              style={{
-                background: 'var(--accent)',
-                color: 'var(--accent-ink)',
-                boxShadow: '0 6px 20px -2px var(--accent-soft)',
-              }}
-            >
-              {loading ? 'opening your journal...' : isLogin ? 'open my diary 🌸' : 'create my sanctuary ✨'}
-            </button>
-          </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                  <Lock size={13} /> Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    required
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                    style={{
+                      background: 'var(--surface-muted)',
+                      borderColor: 'var(--border-soft)',
+                      color: 'var(--ink)',
+                    }}
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
+                    aria-label={showPassword ? 'Hide Password' : 'Show Password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {isLogin && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-[11.5px] font-bold text-[var(--ink-soft)] cursor-pointer select-none">
+                      <span
+                        onClick={() => setRememberMe((prev) => !prev)}
+                        className="flex items-center justify-center w-4 h-4 rounded-md border transition"
+                        style={{
+                          borderColor: 'var(--border-soft)',
+                          background: rememberMe ? 'var(--accent)' : 'var(--surface-muted)',
+                        }}
+                      >
+                        {rememberMe && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </span>
+                      remember me
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotError(null);
+                        setForgotSuccess(null);
+                        setView('forgot');
+                      }}
+                      className="text-[11.5px] font-bold text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
+              </div>
 
-          {isLogin && (
-            <>
-              <div className="relative flex items-center justify-center my-5">
-                <div className="w-full border-t border-[var(--border-soft)]" />
-                <span
-                  className="absolute bg-[var(--surface)] px-3 text-[10.5px] font-extrabold uppercase rounded-full"
+              {!isLogin && (
+                <div>
+                  <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                    <Lock size={13} /> Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="password_confirmation"
+                      required
+                      value={formData.password_confirmation}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                      style={{
+                        background: 'var(--surface-muted)',
+                        borderColor: 'var(--border-soft)',
+                        color: 'var(--ink)',
+                      }}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
+                      aria-label={showConfirmPassword ? 'Hide Confirm Password' : 'Show Confirm Password'}
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Terms & Conditions Checkbox (only for registration) */}
+              {!isLogin && (
+                <div className="flex items-start gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    checked={agreeToTerms}
+                    onChange={(e) => setAgreeToTerms(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-[var(--border-soft)] accent-[var(--accent)] cursor-pointer shrink-0"
+                    style={{ accentColor: 'var(--accent)' }}
+                  />
+                  <label htmlFor="terms" className="text-[12px] font-medium text-[var(--ink-soft)]">
+                    I agree to the{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-[var(--accent)] hover:underline font-bold"
+                    >
+                      Terms of Service & Privacy Policy
+                    </button>
+                  </label>
+                </div>
+              )}
+
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-3 py-3 rounded-2xl text-[14px] font-bold shadow-md transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
                   style={{
-                    color: 'var(--accent)',
-                    letterSpacing: '0.24em',
-                    border: '1px solid var(--border-soft)',
+                    background: 'var(--accent)',
+                    color: 'var(--accent-ink)',
+                    boxShadow: '0 6px 20px -2px var(--accent-soft)',
                   }}
                 >
-                  or
-                </span>
+                  {loading ? 'Logging In...' : isLogin ? 'Log In' : 'Register'}
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleGoogleLogin()}
-                disabled={loading}
-                className="mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border text-[14px] font-bold transition hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50"
-                style={{
-                  background: 'var(--surface-muted)',
-                  borderColor: 'var(--border-soft)',
-                  color: 'var(--ink)',
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 4 1.5l2.7-2.6C16.8 3.4 14.7 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12S6.8 21.5 12 21.5c6.9 0 11.5-4.8 11.5-11.6 0-.8-.1-1.4-.2-2H12Z" />
-                  <path fill="#34A853" d="M3.8 7.3l3.4 2.5c.9-1.7 2.9-2.9 4.8-2.9 1.9 0 3.2.8 4 1.5l2.7-2.6C16.8 3.4 14.7 2.5 12 2.5c-3.9 0-7.2 2.3-8.2 5.8Z" />
-                  <path fill="#FBBC05" d="M3.8 16.7c1.5 3 4.5 5 8.2 5 2.7 0 4.9-.9 6.5-2.5l-3-2.5c-.8.6-1.9 1.1-3.5 1.1-2.6 0-4.8-1.7-5.5-4.1l-3.7 2.9Z" />
-                  <path fill="#4285F4" d="M12 21.5c2.7 0 4.9-.9 6.5-2.5l-3-2.5c-.8.6-1.9 1.1-3.5 1.1-2.6 0-4.8-1.7-5.5-4.1L.5 17.5A10.4 10.4 0 0 0 12 21.5Z" />
-                </svg>
-                continue with google
-              </button>
-            </>
-          )}
-        </form>
+              {isLogin && (
+                <>
+                  <div className="relative flex items-center justify-center my-5">
+                    <div className="w-full border-t border-[var(--border-soft)]" />
+                    <span
+                      className="absolute bg-[var(--surface)] px-3 text-[10.5px] font-extrabold uppercase rounded-full"
+                      style={{
+                        color: 'var(--accent)',
+                        letterSpacing: '0.24em',
+                        border: '1px solid var(--border-soft)',
+                      }}
+                    >
+                      Or
+                    </span>
+                  </div>
 
-        <div className="text-center pt-2 border-t border-[var(--border-soft)]">
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError(null);
-            }}
-            className="text-[13px] font-bold text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-          >
-            {isLogin
-              ? "don't have a diary yet? start writing here ✨"
-              : 'already have a diary? open it here 🌸'}
-          </button>
-        </div>
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleLogin()}
+                    disabled={loading}
+                    className="mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border text-[14px] font-bold transition hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50"
+                    style={{
+                      background: 'var(--surface-muted)',
+                      borderColor: 'var(--border-soft)',
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    <img src="/google-logo.png" alt="Google" className="w-5 h-5 object-contain" onError={(e) => { e.target.src = "https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"; }} />
+                    Continue with Google
+                  </button>
+                </>
+              )}
+            </form>
+
+            <div className="text-center pt-2 border-t border-[var(--border-soft)]">
+              <button
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setError(null);
+                  setAgreeToTerms(false);
+                }}
+                className="text-[13px] font-bold text-[var(--ink-soft)] hover:text-[var(--ink)] transition"
+              >
+                {isLogin ? (
+                  <>Don't have an account yet? <span style={{ color: 'var(--accent)' }}>Register Here</span></>
+                ) : (
+                  <>Already have an account? <span style={{ color: 'var(--accent)' }}>Log In Here</span></>
+                )}
+              </button>
+            </div>
           </>
         )}
       </div>
+
+      {/* Terms & Conditions Modal */}
+      {showTermsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(35, 25, 20, 0.65)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowTermsModal(false)}
+        >
+          <div
+            className="max-w-md w-full max-h-[80vh] rounded-3xl p-6 overflow-y-auto animate-cute-pop"
+            style={{
+              background: 'var(--surface)',
+              border: '1.5px solid var(--border-soft)',
+              boxShadow: 'var(--modal-shadow)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-xl font-bold"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}
+              >
+                Terms of Service & Privacy Policy
+              </h2>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="p-1 rounded-full hover:bg-black/5 transition"
+                style={{ color: 'var(--ink-soft)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Terms Content */}
+            <div className="space-y-4 text-[13px] font-medium leading-relaxed normal-case" style={{ color: 'var(--ink-soft)' }}>
+              {/* Terms of Service */}
+              <div>
+                <h3 className="text-[15px] font-bold text-[var(--ink)] mb-2">Terms of Service</h3>
+                <p className="mb-2">By using Unfiltered, you agree to the following terms:</p>
+                <div className="space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>This app is created for academic purposes as part of an HCI & UX Design project.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>All data entered is for demonstration purposes only and is not stored permanently.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>You are responsible for the content you create and share within the app.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>The app is provided "as is" without warranties of any kind.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Privacy Policy */}
+              <div>
+                <h3 className="text-[15px] font-bold text-[var(--ink)] mb-2">Privacy Policy</h3>
+                <p className="mb-2">Your privacy matters to us. Here's how we handle your data:</p>
+                <div className="space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>No personal data is collected, stored, or shared with third parties.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>All journal entries are stored locally on your device and are not transmitted to external servers.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>Your email and password are used solely for authentication within the app.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[var(--accent)]">•</span>
+                    <p>No analytics or tracking tools are implemented in this application.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-[var(--border-soft)] pt-3" />
+
+              {/* Acknowledgment */}
+              <p className="text-[12px] italic opacity-75">
+                By tapping "I Agree", you acknowledge that you have read and understood these terms.
+              </p>
+            </div>
+
+            {/* Action Buttons - Side by Side */}
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => {
+                  setShowTermsModal(false);
+                }}
+                className="flex-1 py-3 rounded-2xl text-[14px] font-bold transition hover:bg-black/5 cursor-pointer"
+                style={{ color: 'var(--ink-soft)', background: 'var(--surface-muted)' }}
+              >
+                Decline
+              </button>
+              <button
+                onClick={() => {
+                  setAgreeToTerms(true);
+                  setShowTermsModal(false);
+                }}
+                className="flex-1 py-3 rounded-2xl text-[14px] font-bold text-white transition hover:scale-[1.02] active:scale-95 cursor-pointer"
+                style={{ background: 'var(--accent)' }}
+              >
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

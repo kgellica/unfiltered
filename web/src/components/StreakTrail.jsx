@@ -29,13 +29,13 @@ export default function StreakTrail({ streak = 0, entryDates = [] }) {
   const filledSet = new Set(entryDates.map(normalizeDateKey).filter(Boolean));
 
   const getStreakMessage = (s) => {
-    if (s === 0) return 'start your story today • one day at a time 🌱';
-    if (s === 1) return 'first step taken! come back tomorrow 🌸';
-    if (s < 5) return 'you are doing wonderful! streak is glowing 🔥';
-    return 'unstoppable habit champion! keep it up ✨';
+    if (s === 0) return 'start your story today • one day at a time';
+    if (s === 1) return 'first step taken! come back tomorrow';
+    if (s < 5) return 'you are doing wonderful! streak is glowing';
+    return 'unstoppable habit champion! keep it up';
   };
 
-  return (
+ return (
     <div
       className="w-full rounded-3xl p-5 md:p-6 transition-all shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-5 lowercase"
       style={{
@@ -44,7 +44,7 @@ export default function StreakTrail({ streak = 0, entryDates = [] }) {
         boxShadow: 'var(--card-shadow)',
       }}
     >
-      {/* Left Streak Details (No container box, pure glowing flame icon) */}
+      {/* Left Streak Details */}
       <div className="flex items-center gap-3.5 flex-1">
         <Flame
           size={34}
@@ -80,14 +80,8 @@ export default function StreakTrail({ streak = 0, entryDates = [] }) {
         </div>
       </div>
 
-      {/* Right Weekly Trail Dots */}
-      <div
-        className="flex items-center justify-between md:justify-end gap-2.5 sm:gap-3.5 px-4 py-3 rounded-2xl"
-        style={{
-          background: 'var(--surface-muted)',
-          border: '1px solid var(--border-soft)',
-        }}
-      >
+      {/* Right Weekly Trail Dots (Container Styles Removed) */}
+      <div className="flex items-center justify-between md:justify-end gap-2.5 sm:gap-3.5">
         {week.map((d, i) => {
           const key = toLocalKey(d);
           const isFilled = filledSet.has(key);
@@ -112,7 +106,7 @@ export default function StreakTrail({ streak = 0, entryDates = [] }) {
                     : 'text-[var(--ink-faint)]'
                 }`}
                 style={{
-                  background: isFilled ? 'var(--accent)' : 'var(--surface)',
+                  background: isFilled ? 'var(--accent)' : 'var(--surface-muted)',
                   border: isFilled
                     ? 'none'
                     : `1.5px solid ${isToday ? 'var(--accent)' : 'var(--border-soft)'}`,

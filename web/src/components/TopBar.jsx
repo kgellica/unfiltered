@@ -11,6 +11,7 @@ export default function TopBar({
   selectedTag,
   onTagChange,
   user,
+  totalEntries = 0,
 }) {
   const [tagOpen, setTagOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
@@ -54,7 +55,7 @@ export default function TopBar({
   const dateLabel = date ? formatDiaryDate(date) : 'any date';
 
   return (
-    <div className="flex items-center gap-3 flex-wrap lowercase">
+    <div className="flex items-center gap-3 flex-wrap">
       {/* Search Input */}
       <div
         className="flex items-center gap-2.5 h-11 px-4 rounded-2xl flex-1 min-w-[220px] transition-all shadow-sm focus-within:ring-2 focus-within:ring-[var(--accent-soft)]"
@@ -63,11 +64,11 @@ export default function TopBar({
           border: '1.5px solid var(--border-soft)',
         }}
       >
-        <Search size={17} style={{ color: 'var(--ink-faint)' }} />
+       <Search size={17} style={{ color: 'var(--ink-faint)' }} />
         <input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="search your thoughts... 💭"
+          placeholder={`search in ${totalEntries} ${totalEntries === 1 ? 'entry' : 'entries'}`} // 2. Update placeholder string
           className="bg-transparent outline-none text-[13.5px] font-medium flex-1 lowercase placeholder:text-[var(--ink-faint)]"
           style={{ color: 'var(--ink)' }}
         />
@@ -87,16 +88,17 @@ export default function TopBar({
       <div className="relative" ref={dateRef}>
         <button
           onClick={() => setDateOpen((v) => !v)}
-          className="flex items-center gap-2 h-11 px-4 rounded-2xl text-[13px] font-medium transition-all shadow-sm hover:border-[var(--accent)]"
+          className={`flex items-center gap-2 h-11 ${selectedTag && !date ? 'w-11 justify-center px-0' : 'px-4'} rounded-2xl text-[13px] font-medium transition-all shadow-sm hover:border-[var(--accent)]`}
           style={{
             background: date ? 'var(--accent-soft)' : 'var(--surface)',
             border: `1.5px solid ${date ? 'var(--accent)' : 'var(--border-soft)'}`,
             color: date ? 'var(--ink)' : 'var(--ink-soft)',
           }}
+          title={dateLabel}
         >
           <Calendar size={16} style={{ color: date ? 'var(--accent)' : 'var(--ink-soft)' }} />
-          <span className="font-semibold">{dateLabel}</span>
-          <ChevronDown size={14} />
+          {(!selectedTag || date) && <span className="font-semibold">{dateLabel}</span>}
+          {(!selectedTag || date) && <ChevronDown size={14} />}
         </button>
 
         {dateOpen && (
@@ -127,8 +129,8 @@ export default function TopBar({
               <button
                 onClick={() => handleSelectDatePreset('all')}
                 className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${!date
-                    ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
-                    : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
+                  ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
+                  : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
                   }`}
               >
                 all
@@ -136,8 +138,8 @@ export default function TopBar({
               <button
                 onClick={() => handleSelectDatePreset('today')}
                 className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${date === getTodayStr()
-                    ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
-                    : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
+                  ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
+                  : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
                   }`}
               >
                 today
@@ -145,8 +147,8 @@ export default function TopBar({
               <button
                 onClick={() => handleSelectDatePreset('yesterday')}
                 className={`py-1.5 px-2 rounded-xl text-[12px] font-semibold transition ${date === getYesterdayStr()
-                    ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
-                    : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
+                  ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
+                  : 'bg-[var(--surface-muted)] text-[var(--ink-soft)] hover:bg-[var(--accent-soft)]'
                   }`}
               >
                 yesterday
@@ -177,16 +179,17 @@ export default function TopBar({
       <div className="relative" ref={tagRef}>
         <button
           onClick={() => setTagOpen((v) => !v)}
-          className="flex items-center gap-2 h-11 px-4 rounded-2xl text-[13px] font-medium transition-all shadow-sm hover:border-[var(--accent)]"
+          className={`flex items-center gap-2 h-11 ${date && !selectedTag ? 'w-11 justify-center px-0' : 'px-4'} rounded-2xl text-[13px] font-medium transition-all shadow-sm hover:border-[var(--accent)]`}
           style={{
             background: selectedTag ? 'var(--accent-soft)' : 'var(--surface)',
             border: `1.5px solid ${selectedTag ? 'var(--accent)' : 'var(--border-soft)'}`,
             color: selectedTag ? 'var(--ink)' : 'var(--ink-soft)',
           }}
+          title={selectedTag ? `#${selectedTag}` : 'all tags'}
         >
           <Tag size={15} style={{ color: selectedTag ? 'var(--accent)' : 'var(--ink-soft)' }} />
-          <span className="font-semibold">{selectedTag ? `#${selectedTag}` : 'all tags'}</span>
-          <ChevronDown size={14} />
+          {(!date || selectedTag) && <span className="font-semibold">{selectedTag ? `#${selectedTag}` : 'all tags'}</span>}
+          {(!date || selectedTag) && <ChevronDown size={14} />}
         </button>
 
         {tagOpen && (
@@ -204,8 +207,8 @@ export default function TopBar({
                 setTagOpen(false);
               }}
               className={`w-full text-left px-3 py-2 rounded-xl text-[13px] font-semibold transition ${!selectedTag
-                  ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                  : 'text-[var(--ink-soft)] hover:bg-[var(--surface-muted)]'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'text-[var(--ink-soft)] hover:bg-[var(--surface-muted)]'
                 }`}
             >
               #all tags
@@ -225,8 +228,8 @@ export default function TopBar({
                       setTagOpen(false);
                     }}
                     className={`w-full text-left px-3 py-1.5 rounded-xl text-[13px] font-semibold truncate transition flex items-center justify-between ${selectedTag === t
-                        ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                        : 'text-[var(--ink)] hover:bg-[var(--surface-muted)]'
+                      ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                      : 'text-[var(--ink)] hover:bg-[var(--surface-muted)]'
                       }`}
                   >
                     <span>#{t}</span>
@@ -239,17 +242,20 @@ export default function TopBar({
         )}
       </div>
 
-      {/* User Avatar */}
-      <div
-        className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm shadow-sm shrink-0 border-2 border-[var(--border-soft)] transition-transform hover:scale-105"
-        style={{
-          background: 'var(--accent-soft)',
-          color: 'var(--accent)',
-        }}
-        title={user?.name}
-      >
-        {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-      </div>
+      {/* Clear All Filters Button */}
+      {(query || date || selectedTag) && (
+        <button
+          onClick={() => {
+            onQueryChange('');
+            onDateChange('');
+            onTagChange('');
+          }}
+          className="h-11 px-4 rounded-2xl text-[13px] font-bold transition-all shrink-0 hover:bg-black/5"
+          style={{ color: 'var(--ink)' }}
+        >
+          clear all
+        </button>
+      )}
     </div>
   );
 }

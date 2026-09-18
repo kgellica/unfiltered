@@ -1,6 +1,13 @@
 import { getReadableText, MOOD_META, formatShortDate, formatTime } from '../lib/color';
 import { Calendar, Tag as TagIcon, Sparkles } from 'lucide-react';
 
+function stripHtmlAndEntities(html = '') {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const text = doc.body.textContent || '';
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 export default function EntryCard({ entry, onOpen }) {
   const hasCustomBg = Boolean(entry.bg_color || entry.color);
   const cardColor = entry.bg_color || entry.color || '';
@@ -8,32 +15,25 @@ export default function EntryCard({ entry, onOpen }) {
   const ink = hasCustomBg ? getReadableText(cardColor) : 'var(--ink)';
   const softInk = hasCustomBg ? `${ink}bb` : 'var(--ink-soft)';
   const mood = MOOD_META[entry.mood] || MOOD_META.good;
-
-  // Clean HTML from content for preview
-  const plainText = (entry.content || '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
+  const plainText = stripHtmlAndEntities(entry.content);
   const formattedDate = formatShortDate(entry.entry_date);
 
   return (
     <button
       onClick={() => onOpen(entry)}
-      className="text-left rounded-3xl p-5 md:p-6 flex flex-col gap-3.5 h-full transition-all duration-200 hover:-translate-y-1 hover:shadow-lg lowercase cursor-pointer relative overflow-hidden group"
+      className="text-left rounded-2xl p-5 md:p-6 flex flex-col gap-3.5 h-full transition-all duration-200 hover:-translate-y-1 hover:shadow-lg cursor-pointer relative overflow-hidden group"
       style={{
         background: bg,
         border: hasCustomBg ? '1px solid rgba(0,0,0,0.06)' : '1.5px solid var(--border-soft)',
         boxShadow: 'var(--card-shadow)',
       }}
     >
-      {/* Top Header: Date & Mood Badge */}
       <div className="flex items-center justify-between gap-2 w-full">
-        <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: softInk }}>
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold" style={{ color: softInk }}>
           <Calendar size={13} className="shrink-0 opacity-80" />
           <span>{formattedDate}</span>
           {entry.created_at && (
-            <span className="text-[11px] opacity-75">• {formatTime(entry.created_at)}</span>
+            <span className="text-[10px] opacity-75">• {formatTime(entry.created_at)}</span>
           )}
         </div>
 
@@ -50,7 +50,6 @@ export default function EntryCard({ entry, onOpen }) {
         </div>
       </div>
 
-      {/* Entry Title */}
       <h3
         className="text-[17px] font-bold tracking-tight line-clamp-1 group-hover:text-[var(--accent)] transition-colors"
         style={{ fontFamily: 'var(--font-display)', color: ink }}
@@ -58,15 +57,13 @@ export default function EntryCard({ entry, onOpen }) {
         {entry.title || 'untitled reflection'}
       </h3>
 
-      {/* Body preview */}
       <p
         className="text-[13.5px] leading-relaxed line-clamp-3 font-medium flex-1"
         style={{ color: softInk }}
       >
-        {plainText || 'no content written yet... ✨'}
+        {plainText || 'no content written yet...'}
       </p>
 
-      {/* Bottom Tag List */}
       <div className="mt-auto pt-2 flex items-center justify-between gap-2 border-t border-black/5 w-full">
         <div className="flex flex-wrap gap-1.5">
           {(entry.tags || []).length === 0 ? (
@@ -96,13 +93,6 @@ export default function EntryCard({ entry, onOpen }) {
             </span>
           )}
         </div>
-
-        <span
-          className="text-[11px] font-semibold opacity-70 flex items-center gap-1 shrink-0"
-          style={{ color: softInk }}
-        >
-          open <Sparkles size={11} />
-        </span>
       </div>
     </button>
   );

@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@react-native-community/datetimepicker": "^9.1.0",
+    "prop-types": "^15.8.1",
     "react-native-svg": "^15.15.5"
   },
   "devDependencies": {

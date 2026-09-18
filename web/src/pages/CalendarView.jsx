@@ -9,7 +9,11 @@ import {
 import { useJournal } from '../hooks/useJournal';
 import EntryModal from '../components/EntryModal';
 import EntryCard from '../components/EntryCard';
+import NewEntryButton from '../components/NewEntryButton';
+import ProfileDropdown from '../components/ProfileDropdown';
 import { normalizeDateKey, MOOD_META, parseDiaryDate, formatDiaryDate } from '../lib/color';
+import StateMessage from '../components/StateMessage';
+
 
 const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
@@ -104,35 +108,22 @@ export default function CalendarView() {
       className="min-h-screen px-4 sm:px-8 md:px-12 py-8 transition-colors duration-200 lowercase"
       style={{ background: 'var(--bg-page)' }}
     >
-      <div className="max-w-5xl mx-auto flex flex-col gap-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="max-w-6xl mx-auto flex flex-col gap-8">
+        {/* Header with Profile Dropdown */}
+        <div className="flex items-start justify-between">
           <div>
             <h1
               className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2"
               style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}
             >
-              <span>calendar diary view</span>
-              <span
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-              >
-                <CalendarDays size={16} />
-              </span>
+              <span>calendar</span>
             </h1>
             <p className="text-[13px] md:text-[14px] font-medium mt-1" style={{ color: 'var(--ink-soft)' }}>
-              browse your thoughts by day and visualize your monthly mood patterns. 🌸
+              browse your thoughts by day and visualize your monthly mood patterns.
             </p>
           </div>
-
-          <button
-            onClick={() => openNewForDate(todayKey)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-[13px] font-bold text-white shadow-xs transition hover:scale-105 cursor-pointer"
-            style={{ background: 'var(--accent)' }}
-          >
-            <Plus size={16} strokeWidth={2.5} />
-            <span>write for today</span>
-          </button>
+          
+          <ProfileDropdown />
         </div>
 
         {/* Calendar Card */}
@@ -257,43 +248,20 @@ export default function CalendarView() {
               className="text-lg font-bold text-[var(--ink)] flex items-center gap-2"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              <BookOpen size={18} style={{ color: 'var(--accent)' }} />
-              <span>reflections for {formatDiaryDate(selectedDayKey)}</span>
-              <span
-                className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-              >
-                {selectedDayEntries.length}
-              </span>
+              <span>reflections for today</span>
             </h3>
-
-            <button
-              onClick={() => openNewForDate(selectedDayKey)}
-              className="text-xs font-bold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <Plus size={14} />
-              <span>write entry for this day</span>
-            </button>
           </div>
 
-          {selectedDayEntries.length === 0 ? (
-            <div
-              className="rounded-3xl py-10 px-6 text-center flex flex-col items-center gap-2"
-              style={{
-                background: 'var(--surface)',
-                border: '2px dashed var(--border-soft)',
-              }}
-            >
-              <p className="text-sm font-bold text-[var(--ink)]">
-                no entries recorded on {formatDiaryDate(selectedDayKey)} ☁️
-              </p>
-              <button
-                onClick={() => openNewForDate(selectedDayKey)}
-                className="mt-2 px-4 py-2 rounded-2xl text-xs font-bold text-white bg-[var(--accent)] transition hover:scale-105 cursor-pointer"
-              >
-                + write entry for this date ✨
-              </button>
-            </div>
+          {loading ? (
+            <StateMessage type="loading" variant="calendar" />
+          ) : selectedDayEntries.length === 0 ? (
+            <StateMessage
+              variant="calendar"
+              title={`no entries`}
+              description="take a moment to reflect and write something"
+              actionLabel="+ write entry"
+              onAction={() => openNewForDate(selectedDayKey)}
+            />
           ) : (
             <div
               className="grid gap-4 sm:gap-5"
