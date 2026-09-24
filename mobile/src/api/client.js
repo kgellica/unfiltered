@@ -8,8 +8,11 @@ import { getToken, TOKEN_KEY } from './secureAuthStorage';
 // Then set EXPO_PUBLIC_API_URL in a .env file, e.g.:
 //   EXPO_PUBLIC_API_URL=http://192.168.1.23:8000/api
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.35:8000/api';
+  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.37:8000/api';
 export { TOKEN_KEY };
+
+console.log('=== API_BASE_URL IN USE:', API_BASE_URL, '===');
+console.log('=== EXPO_PUBLIC_API_URL raw env:', process.env.EXPO_PUBLIC_API_URL, '===');
 
 const client = axios.create({
   baseURL: API_BASE_URL,

@@ -34,12 +34,10 @@ class GeminiService
             return null;
         }
 
-        // If the entry is too short to summarize reasonably (e.g. just random gibberish or a couple letters)
         if (mb_strlen($entryText) < 5) {
             return null;
         }
 
-        // Keep the entry text bounded so we do not send unbounded payload.
         $entryText = mb_substr($entryText, 0, 6000);
 
         $prompt = "You are an empathetic, insightful journal companion. "
@@ -48,20 +46,33 @@ class GeminiService
             . "Do not include headings, bullets, markdown formatting, or quotation marks. Output ONLY the summary text.\n\n"
             . "Journal entry:\n\"\"\"\n{$entryText}\n\"\"\"";
 
-        return $this->generate($prompt, temperature: 0.7, maxOutputTokens: 150);
+        $summary = $this->generate($prompt, temperature: 0.7, maxOutputTokens: 400);
+
+        if ($summary) {
+            return $summary;
+        }
+
+        // Fallback: local extractive summary (first 1-2 full sentences, never cut mid-text)
+        $sentences = preg_split('/(?<=[.?!])\s+(?=[A-Z])/', $entryText);
+
+        return trim(implode(' ', array_slice($sentences, 0, 2)));
     }
 
-    protected function generate(string $prompt, float $temperature = 0.7, int $maxOutputTokens = 150): ?string
+    protected function generate(string $prompt, float $temperature = 0.7, int $maxOutputTokens = 400): ?string
     {
         if (! $this->isConfigured()) {
-            Log::warning('Gemini API key is not configured');
             return null;
         }
 
         try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
+            $model = $this->model;
+            // Fix model if it's invalid
+            if ($model === 'gemini-3.6-flash') {
+                $model = 'gemini-1.5-flash';
+            }
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$this->apiKey}";
 
-            $response = Http::timeout(10)->post($url, [
+            $response = Http::timeout(5)->post($url, [
                 'contents' => [
                     [
                         'parts' => [
@@ -76,24 +87,20 @@ class GeminiService
             ]);
 
             if ($response->failed()) {
-                Log::warning('Gemini API error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
                 return null;
             }
 
             $candidates = $response->json('candidates', []);
-            $text = data_get($candidates, '0.content.parts.0.text');
+            // Join every text part so a multi-part reply is never cut to its first chunk.
+            $parts = data_get($candidates, '0.content.parts', []);
+            $text = collect($parts)->pluck('text')->filter()->implode('');
 
             if (! $text) {
                 return null;
             }
 
-            // Remove any stray quotes around the output
             return trim(preg_replace('/^["\'“]|["\'”]$/u', '', trim($text)));
         } catch (\Throwable $e) {
-            Log::warning('Gemini request failed: ' . $e->getMessage());
             return null;
         }
     }

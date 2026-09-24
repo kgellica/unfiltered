@@ -32,7 +32,7 @@ export default function TagFilterModal({
                   }}
                 >
                   <Text style={[styles.menuItemText, active && styles.menuItemTextActive]}>
-                    {isAny ? 'all tags' : `#${item}`}
+                    {isAny ? 'all tags' : item}
                   </Text>
                   {active && <Check size={15} color={colors.accent} strokeWidth={2.6} />}
                 </Pressable>

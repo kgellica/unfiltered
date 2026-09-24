@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -27,9 +27,11 @@ import PromptBar from '../components/PromptBar';
 import EditorToolbar from '../components/EditorToolbar';
 import { analyzeMood } from '../utils/moodAnalyzer';
 import MoodFace from '../components/MoodFace';
+import SummaryPanel from '../components/journal/SummaryPanel';
+import TagChip from '../components/TagChip';
 import {
   Camera, Mic, Square, Play, Pause, X, Trash2, Plus, Minus, ChevronLeft, ChevronRight,
-  Sparkles, Bot, RefreshCw,
+  Sparkles,
   ChevronDown, ChevronUp, Info,
 } from 'lucide-react-native';
 import { colors, radius, spacing } from '../theme/theme';
@@ -42,13 +44,12 @@ const BG_COLOR_PRESETS = [
 ];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 const MOOD_META = {
-  great: { label: 'great', emoji: '😄', color: colors.moodGreat, text: 'feeling amazing ✨' },
-  good: { label: 'good', emoji: '🙂', color: colors.moodGood, text: 'feeling happy 🙂' },
-  okay: { label: 'okay', emoji: '😐', color: colors.moodOkay, text: 'feeling okay 😐' },
-  low: { label: 'low', emoji: '🙁', color: colors.moodLow, text: 'feeling a bit low 🙁' },
-  sad: { label: 'sad', emoji: '😢', color: colors.moodSad, text: 'feeling down 😢' },
+  great: { label: 'great', color: colors.moodGreat },
+  good: { label: 'good', color: colors.moodGood },
+  okay: { label: 'okay', color: colors.moodOkay },
+  low: { label: 'low', color: colors.moodLow },
+  sad: { label: 'sad', color: colors.moodSad },
 };
 const MOOD_ORDER = ['great', 'good', 'okay', 'low', 'sad'];
 
@@ -786,7 +787,7 @@ export default function NewEntryScreen({ route, navigation }) {
             <View style={styles.moodSuggestRow}>
               <Sparkles size={14} color={colors.accent} strokeWidth={2.4} />
               <Text style={styles.moodSuggestText}>
-                Sounds like you're feeling {MOOD_META[suggestedMood].label} {MOOD_META[suggestedMood].emoji}. Use it?
+                Sounds like you're feeling {MOOD_META[suggestedMood].label}. Use it?
               </Text>
               <Pressable
                 onPress={acceptSuggestedMood}
@@ -1064,20 +1065,14 @@ export default function NewEntryScreen({ route, navigation }) {
             )}
           </Pressable>
           {openSections.tag && <View style={styles.tagRow}>
-            {SUGGESTED_TAGS.map((t) => {
-              const active = selectedTags.includes(t);
-              return (
-                <Pressable
-                  key={t}
-                  onPress={() => toggleTag(t)}
-                  style={[styles.tagChip, active && styles.tagChipSelected]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Tag: ${t}`}
-                >
-                  <Text style={[styles.tagChipText, active && styles.tagChipTextSelected]}>#{t}</Text>
-                </Pressable>
-              );
-            })}
+            {SUGGESTED_TAGS.map((t) => (
+              <TagChip
+                key={t}
+                label={t}
+                selected={selectedTags.includes(t)}
+                onPress={() => toggleTag(t)}
+              />
+            ))}
           </View>}
 
           <View style={styles.buttonContainer}>
@@ -1116,68 +1111,15 @@ export default function NewEntryScreen({ route, navigation }) {
       )}
 
       {/* Chatbot-style summary panel */}
-      {isEditing && summaryOpen && (
-        <Animated.View
-          style={[
-            styles.summaryPanel,
-            {
-              opacity: summaryFade,
-              transform: [
-                {
-                  translateY: summaryFade.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [16, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.summaryPanelHeader}>
-            <View style={styles.summaryPanelHeaderLeft}>
-              <View style={styles.summaryPanelAvatar}>
-                <Bot size={15} color={colors.accentInk} strokeWidth={2.4} />
-              </View>
-              <Text style={styles.summaryPanelTitle}>journal insights</Text>
-            </View>
-            <Pressable
-              onPress={closeSummaryPanel}
-              hitSlop={8}
-              style={styles.summaryPanelCloseBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Close AI summary"
-            >
-              <X size={16} color={colors.onSurfaceVariant} strokeWidth={2.4} />
-            </Pressable>
-          </View>
-
-          <View style={styles.summaryPanelBody}>
-            {summaryLoading ? (
-              <View style={styles.summaryTypingRow}>
-                <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={styles.summaryTypingText}>reading your entry...</Text>
-              </View>
-            ) : summaryError ? (
-              <Text style={styles.summaryErrorText}>couldn't summarize this entry — try again.</Text>
-            ) : summary ? (
-              <Text style={styles.summaryBodyText}>{summary}</Text>
-            ) : null}
-          </View>
-
-          {!summaryLoading && (
-            <View style={styles.summaryPanelFooter}>
-              <Pressable
-                onPress={runSummary}
-                style={styles.summaryRetryBtn}
-                accessibilityRole="button"
-                accessibilityLabel="Retry AI summary"
-              >
-                <RefreshCw size={13} color={colors.accent} strokeWidth={2.4} />
-                <Text style={styles.summaryRetryText}>retry</Text>
-              </Pressable>
-            </View>
-          )}
-        </Animated.View>
+      {isEditing && (
+        <SummaryPanel
+          summaryOpen={summaryOpen}
+          summaryFade={summaryFade}
+          summaryLoading={summaryLoading}
+          summaryError={summaryError}
+          summary={summary}
+          closeSummaryPanel={closeSummaryPanel}
+        />
       )}
 
       {/* Photo Viewer Modal with Pinch to Zoom */}
@@ -1592,27 +1534,6 @@ const createStyles = () => StyleSheet.create({
     gap: 6,
     marginBottom: 4,
   },
-  tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.outlineVariant,
-    backgroundColor: colors.surfaceContainerLow,
-  },
-  tagChipSelected: { 
-    borderColor: colors.primary, 
-    backgroundColor: colors.primaryContainer 
-  },
-  tagChipText: { 
-    fontSize: 12, 
-    fontWeight: '600', 
-    color: colors.onSurfaceVariant 
-  },
-  tagChipTextSelected: { 
-    color: colors.primary, 
-    fontWeight: '700' 
-  },
   
   buttonContainer: {
     marginTop: 24,
@@ -1674,107 +1595,6 @@ const createStyles = () => StyleSheet.create({
   summaryFabPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.96 }],
-  },
-  summaryPanel: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 280,
-    maxHeight: 260,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.outlineVariant,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  summaryPanelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSoft,
-    backgroundColor: colors.accentSoft,
-  },
-  summaryPanelHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  summaryPanelAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.full,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryPanelTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.onSurface,
-  },
-  summaryPanelCloseBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryPanelBody: {
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  summaryTypingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  summaryTypingText: {
-    fontSize: 12.5,
-    fontStyle: 'italic',
-    color: colors.onSurfaceVariant,
-  },
-  summaryBodyText: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.onSurface,
-  },
-  summaryErrorText: {
-    fontSize: 12.5,
-    color: colors.error,
-  },
-  summaryPanelFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-  },
-  summaryRetryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.accentSoft,
-  },
-  summaryRetryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.accent,
   },
 
   // Photo Viewer Styles

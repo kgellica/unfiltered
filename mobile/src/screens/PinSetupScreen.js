@@ -121,7 +121,7 @@ export default function PinSetupScreen({ navigation, route }) {
             allowReveal
             size="lg"
             autoFocus
-            key={step} // remount on step change so autoFocus re-triggers
+            key={step} 
           />
         </View>
 

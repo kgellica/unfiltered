@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,17 @@ import {
 import { Calendar, Mic } from 'lucide-react-native';
 import { colors, radius } from '../../theme/theme';
 import { formatDateAndTime } from './journalDateUtils';
+import TagChip from '../TagChip';
+import MoodChip from '../MoodChip';
+import { useTheme } from '../../context/ThemeContext';
 
-const MOOD_META = {
-  great: { label: 'great', emoji: '😄' },
-  good: { label: 'good', emoji: '🙂' },
-  okay: { label: 'okay', emoji: '😐' },
-  low: { label: 'low', emoji: '🙁' },
-  sad: { label: 'sad', emoji: '😢' },
-};
+const MOODS = ['great', 'good', 'okay', 'low', 'sad'];
 
 export default React.memo(function EntryCard({ item, onPress }) {
-  const mood = MOOD_META[item.mood] || MOOD_META.good;
+  // Subscribe so styles rebuild with the current accent/mode (e.g. the "open" link).
+  const { mode, accent } = useTheme();
+  const styles = useMemo(() => createStyles(), [mode, accent]);
+  const mood = MOODS.includes(item.mood) ? item.mood : 'good';
   const plainText = (item.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const tags = item.tags || [];
   const firstPhoto = Array.isArray(item.photo_path) ? item.photo_path[0] : item.photo_path;
@@ -38,10 +38,7 @@ export default React.memo(function EntryCard({ item, onPress }) {
           <Calendar size={12} color={colors.onSurfaceFaint} strokeWidth={2.2} />
           <Text style={styles.cardDate}>{formatDateAndTime(item.entry_date, item.created_at)}</Text>
         </View>
-        <View style={styles.moodPill}>
-          <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-          <Text style={styles.moodLabel}>{mood.label}</Text>
-        </View>
+        <MoodChip label={mood} />
       </View>
 
       {hasPhoto && (
@@ -80,9 +77,7 @@ export default React.memo(function EntryCard({ item, onPress }) {
             {tags.slice(0, 3).map((t) => {
               const name = t.name || t;
               return (
-                <View key={name} style={styles.cardTag}>
-                  <Text style={styles.cardTagText}>#{name}</Text>
-                </View>
+                <TagChip key={name} label={name} compact />
               );
             })}
           </View>
@@ -95,7 +90,7 @@ export default React.memo(function EntryCard({ item, onPress }) {
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -120,33 +115,6 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '700',
     color: colors.onSurfaceVariant,
-  },
-  moodPill: {
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 28,
-  },
-  moodEmoji: {
-    fontSize: 12,
-    lineHeight: 14,
-    marginTop: 0,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-  },
-  moodLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.onSurface,
-    lineHeight: 14,
-    marginLeft: 3,
-    marginTop: 0,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   attachmentPreview: {
     marginBottom: 10,
@@ -229,16 +197,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-  },
-  cardTag: {
-    backgroundColor: colors.primaryContainer,
-    borderRadius: radius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  cardTagText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.accent,
   },
 });
