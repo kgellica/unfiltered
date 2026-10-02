@@ -19,6 +19,7 @@ import { listEntries } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
 import RemindersHeaderButton from '../components/RemindersHeaderButton';
+import TagChip from '../components/TagChip';
 
 // photo_path may be a JSON array of URLs (new entries) or a legacy single string
 const firstPhotoOf = (entry) => {
@@ -383,9 +384,7 @@ export default function MemoriesScreen({ navigation }) {
                       {item.tags.slice(0, 3).map((t) => {
                         const name = t.name || t;
                         return (
-                          <View key={name} style={styles.cardTag}>
-                            <Text style={styles.cardTagText}>#{name}</Text>
-                          </View>
+                          <TagChip key={name} label={name} compact />
                         );
                       })}
                       {item.tags.length > 3 && (
@@ -642,17 +641,6 @@ const createStyles = () => StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginTop: 8,
-  },
-  cardTag: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  cardTagText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.accent,
   },
   cardTagMore: {
     fontSize: 10,

@@ -1,15 +1,16 @@
-import React, { useCallback, useState, useMemo } from 'react';
+﻿import React, { useCallback, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getEntriesByMonth } from '../api/entries';
 import { colors, radius, spacing } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
+import MoodChip from '../components/MoodChip';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react-native';
 import RemindersHeaderButton from '../components/RemindersHeaderButton';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-// ⭐️ FIX: Local Timezone Date Conversion (Uses Phone's exact clock)
+// ⭐ FIX: Local Timezone Date Conversion (Uses Phone's exact clock)
 function getTodayLocalString() {
   const now = new Date();
   // Adjust for the local timezone offset to get the real date correctly
@@ -61,7 +62,7 @@ export default function CalendarScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const now = new Date();
-  const todayStr = getTodayLocalString(); // ⭐️ Local phone date
+  const todayStr = getTodayLocalString(); // ⭐ Local phone date
   const isCurrentMonth = cursor.getFullYear() === now.getFullYear() && cursor.getMonth() === now.getMonth();
 
   const year = cursor.getFullYear();
@@ -220,7 +221,7 @@ export default function CalendarScreen({ navigation }) {
                     {(entry.content || '').replace(/<[^>]+>/g, ' ').trim() || 'no content written yet...'}
                   </Text>
                   <View style={styles.activityEntryFooter}>
-                    <Text style={styles.activityEntryMood}>{entry.mood ? `✨ ${entry.mood}` : ''}</Text>
+                    {entry.mood ? <MoodChip label={entry.mood} /> : <View />}
                     <Text style={styles.activityEntryOpen}>open ›</Text>
                   </View>
                 </Pressable>
@@ -371,10 +372,6 @@ const createStyles = () => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 8,
-  },
-  activityEntryMood: {
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
   },
   activityEntryOpen: {
     fontSize: 12,

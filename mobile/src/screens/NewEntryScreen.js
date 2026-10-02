@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+﻿import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -26,6 +26,9 @@ import ScrollableTextInput from '../components/ScrollableTextInput';
 import PromptBar from '../components/PromptBar';
 import EditorToolbar from '../components/EditorToolbar';
 import { analyzeMood } from '../utils/moodAnalyzer';
+import MoodFace from '../components/MoodFace';
+import SummaryPanel from '../components/journal/SummaryPanel';
+import TagChip from '../components/TagChip';
 import {
   Camera, Mic, Square, Play, Pause, X, Trash2, Plus, Minus, ChevronLeft, ChevronRight,
   Sparkles,
@@ -34,19 +37,19 @@ import {
 import { colors, radius, spacing } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
+import { generateEntrySummary } from '../api/gemini';
 
 const BG_COLOR_PRESETS = [
   '#FFFFFF', '#FFF3E0', '#FCE4EC', '#E8F5E9', '#E3F2FD', '#F3E5F5', '#FFFDE7', '#EFEBE9',
 ];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 const MOOD_META = {
-  great: { label: 'great', emoji: '😄', color: colors.moodGreat, text: 'feeling amazing ✨' },
-  good: { label: 'good', emoji: '🙂', color: colors.moodGood, text: 'feeling happy 🙂' },
-  okay: { label: 'okay', emoji: '😐', color: colors.moodOkay, text: 'feeling okay 😐' },
-  low: { label: 'low', emoji: '🙁', color: colors.moodLow, text: 'feeling a bit low 🙁' },
-  sad: { label: 'sad', emoji: '😢', color: colors.moodSad, text: 'feeling down 😢' },
+  great: { label: 'great', color: colors.moodGreat },
+  good: { label: 'good', color: colors.moodGood },
+  okay: { label: 'okay', color: colors.moodOkay },
+  low: { label: 'low', color: colors.moodLow },
+  sad: { label: 'sad', color: colors.moodSad },
 };
 const MOOD_ORDER = ['great', 'good', 'okay', 'low', 'sad'];
 
@@ -103,6 +106,14 @@ export default function NewEntryScreen({ route, navigation }) {
   const moodDebounceRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
+
+  // AI summary chat panel — anchored to the in-entry FAB, scoped to this
+  // single entry only.
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState(false);
+  const summaryFade = useRef(new Animated.Value(0)).current;
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -192,6 +203,38 @@ export default function NewEntryScreen({ route, navigation }) {
   };
 
   const dismissSuggestedMood = () => setSuggestedMood(null);
+
+  const runSummary = async () => {
+    if (!entryId) return;
+    setSummaryLoading(true);
+    setSummaryError(false);
+    const generated = await generateEntrySummary(entryId);
+    setSummaryLoading(false);
+    if (generated) {
+      setSummary(generated);
+    } else {
+      setSummary(null);
+      setSummaryError(true);
+    }
+  };
+
+  const openSummaryPanel = () => {
+    setSummaryOpen(true);
+    Animated.timing(summaryFade, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+    if (!summary && !summaryLoading) runSummary();
+  };
+
+  const closeSummaryPanel = () => {
+    Animated.timing(summaryFade, {
+      toValue: 0,
+      duration: 140,
+      useNativeDriver: true,
+    }).start(() => setSummaryOpen(false));
+  };
 
   const pickPhoto = async () => {
     if (photoUris.length >= MAX_PHOTOS) {
@@ -744,7 +787,7 @@ export default function NewEntryScreen({ route, navigation }) {
             <View style={styles.moodSuggestRow}>
               <Sparkles size={14} color={colors.accent} strokeWidth={2.4} />
               <Text style={styles.moodSuggestText}>
-                Sounds like you're feeling {MOOD_META[suggestedMood].label} {MOOD_META[suggestedMood].emoji}. Use it?
+                Sounds like you're feeling {MOOD_META[suggestedMood].label}. Use it?
               </Text>
               <Pressable
                 onPress={acceptSuggestedMood}
@@ -780,16 +823,20 @@ export default function NewEntryScreen({ route, navigation }) {
                     onPress={() => setMood(key)}
                     style={[
                       styles.moodChip,
-                      { 
-                        backgroundColor: active ? m.color : colors.surfaceContainerLow,
-                        borderColor: active ? m.color : colors.outlineVariant,
-                        borderWidth: active ? 2 : 1.5,
-                      }
+                      {
+                        borderColor: active ? m.color : 'transparent',
+                        borderWidth: active ? 1.5 : 1.5,
+                      },
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel={`Mood: ${m.label}`}
                   >
-                    <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                    <MoodFace
+                      mood={key}
+                      size={26}
+                      color={active ? m.color : colors.onSurfaceVariant}
+                      active={active}
+                    />
                     <Text style={[styles.moodLabel, active && styles.moodLabelActive]}>{m.label}</Text>
                   </Pressable>
                 );
@@ -1018,20 +1065,14 @@ export default function NewEntryScreen({ route, navigation }) {
             )}
           </Pressable>
           {openSections.tag && <View style={styles.tagRow}>
-            {SUGGESTED_TAGS.map((t) => {
-              const active = selectedTags.includes(t);
-              return (
-                <Pressable
-                  key={t}
-                  onPress={() => toggleTag(t)}
-                  style={[styles.tagChip, active && styles.tagChipSelected]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Tag: ${t}`}
-                >
-                  <Text style={[styles.tagChipText, active && styles.tagChipTextSelected]}>#{t}</Text>
-                </Pressable>
-              );
-            })}
+            {SUGGESTED_TAGS.map((t) => (
+              <TagChip
+                key={t}
+                label={t}
+                selected={selectedTags.includes(t)}
+                onPress={() => toggleTag(t)}
+              />
+            ))}
           </View>}
 
           <View style={styles.buttonContainer}>
@@ -1055,6 +1096,31 @@ export default function NewEntryScreen({ route, navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* AI summary FAB — lives inside the journal entry itself, not the card */}
+      {isEditing && !summaryOpen && (
+        <Pressable
+          style={({ pressed }) => [styles.summaryFab, pressed && styles.summaryFabPressed]}
+          onPress={openSummaryPanel}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Summarize this entry with AI"
+        >
+          <Sparkles size={20} color={colors.accentInk} strokeWidth={2.4} />
+        </Pressable>
+      )}
+
+      {/* Chatbot-style summary panel */}
+      {isEditing && (
+        <SummaryPanel
+          summaryOpen={summaryOpen}
+          summaryFade={summaryFade}
+          summaryLoading={summaryLoading}
+          summaryError={summaryError}
+          summary={summary}
+          closeSummaryPanel={closeSummaryPanel}
+        />
+      )}
 
       {/* Photo Viewer Modal with Pinch to Zoom */}
       <Modal
@@ -1436,23 +1502,22 @@ const createStyles = () => StyleSheet.create({
   moodRow: { 
     flexDirection: 'row', 
     flexWrap: 'nowrap',
-    gap: 6,
+    gap: 10,
     marginBottom: 4,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
   },
   moodChip: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 3,
     flex: 1,
     maxWidth: 62,
-    minWidth: 52,
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: radius.lg,
+    backgroundColor: 'transparent',
     borderWidth: 1.5,
   },
-  moodEmoji: { fontSize: 18 },
   moodLabel: { 
     fontSize: 9, 
     fontWeight: '600', 
@@ -1468,27 +1533,6 @@ const createStyles = () => StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginBottom: 4,
-  },
-  tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.outlineVariant,
-    backgroundColor: colors.surfaceContainerLow,
-  },
-  tagChipSelected: { 
-    borderColor: colors.primary, 
-    backgroundColor: colors.primaryContainer 
-  },
-  tagChipText: { 
-    fontSize: 12, 
-    fontWeight: '600', 
-    color: colors.onSurfaceVariant 
-  },
-  tagChipTextSelected: { 
-    color: colors.primary, 
-    fontWeight: '700' 
   },
   
   buttonContainer: {
@@ -1522,6 +1566,35 @@ const createStyles = () => StyleSheet.create({
     color: colors.error,
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  // AI summary FAB + chatbot-style panel — themed off the current
+  // accent/mode so it always matches the entry's own ambience.
+  summaryFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 52,
+    height: 52,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  summaryFabPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
   },
 
   // Photo Viewer Styles

@@ -112,7 +112,6 @@ export default function ProfileScreen({ navigation }) {
               {loggingOut ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.modalConfirmBtnText}>Log out</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalCancelBtn} activeOpacity={0.85} onPress={() => setShowLogoutModal(false)} disabled={loggingOut}>
-              <X size={14} color={colors.onSurfaceVariant} strokeWidth={2.4} />
               <Text style={styles.modalCancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>

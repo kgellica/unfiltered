@@ -1,4 +1,4 @@
-# unfiltered — A Digital Journaling Sanctuary
+# unfiltered - A Digital Journaling Sanctuary
 
 **unfiltered** is a full-stack digital journaling platform designed to provide a safe, cozy space for recording daily thoughts, mood tracking, and personal reflections. Built as a monorepo, it seamlessly connects a Laravel API backend with web and mobile clients.
 

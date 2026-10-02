@@ -4,7 +4,6 @@ import {
   Text, 
   StyleSheet, 
   Pressable, 
-  ActivityIndicator, 
   Modal,
   TextInput,
   KeyboardAvoidingView,
@@ -15,10 +14,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
-import { RefreshCw, Heart, Copy, Check, Sparkles, Plus, X, AlertCircle, Info } from 'lucide-react-native';
+import { RefreshCw, Heart, Copy, Check, Plus, X, AlertCircle, Info } from 'lucide-react-native';
 import { colors, radius } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
-import { generateAffirmation } from '../api/gemini';
 import ScrollableTextInput from '../components/ScrollableTextInput';
 
 const AFFIRMATION_PRESETS = [
@@ -33,11 +31,6 @@ const AFFIRMATION_PRESETS = [
 
 const FAV_KEY = 'uf_fav_affirmations';
 export const CUSTOM_AFFIRMATIONS_KEY = 'uf_custom_affirmations';
-const DAILY_AI_AFFIRMATION_KEY = 'uf_daily_ai_affirmation';
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function InlineAffirmation() {
   const { mode, accent } = useTheme();
@@ -50,8 +43,6 @@ export default function InlineAffirmation() {
   const [index, setIndex] = useState(() => Math.floor(Math.random() * AFFIRMATION_PRESETS.length));
   const [copied, setCopied] = useState(false);
   const [favorites, setFavorites] = useState([]);
-  const [aiText, setAiText] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
   
   // Modal state for adding custom affirmations
   const [modalVisible, setModalVisible] = useState(false);
@@ -75,28 +66,6 @@ export default function InlineAffirmation() {
         setCustomAffirmations(raw ? JSON.parse(raw) : []);
       } catch {
         setCustomAffirmations([]);
-      }
-    });
-
-    AsyncStorage.getItem(DAILY_AI_AFFIRMATION_KEY).then(async (raw) => {
-      try {
-        const cached = raw ? JSON.parse(raw) : null;
-        if (cached && cached.date === todayKey() && cached.text) {
-          setAiText(cached.text);
-          return;
-        }
-      } catch {
-        // fall through to regenerate
-      }
-      setAiLoading(true);
-      const generated = await generateAffirmation();
-      setAiLoading(false);
-      if (generated) {
-        setAiText(generated);
-        AsyncStorage.setItem(
-          DAILY_AI_AFFIRMATION_KEY,
-          JSON.stringify({ date: todayKey(), text: generated })
-        ).catch(() => {});
       }
     });
   }, []);
@@ -133,23 +102,11 @@ export default function InlineAffirmation() {
     }
   }, [modalVisible]);
 
-  const currentText = aiText || affirmations[index % affirmations.length];
+  const currentText = affirmations[index % affirmations.length];
   const isFav = favorites.includes(currentText);
 
-  const nextAffirmation = async () => {
+  const nextAffirmation = () => {
     setCopied(false);
-    setAiLoading(true);
-    const generated = await generateAffirmation();
-    setAiLoading(false);
-    if (generated) {
-      setAiText(generated);
-      AsyncStorage.setItem(
-        DAILY_AI_AFFIRMATION_KEY,
-        JSON.stringify({ date: todayKey(), text: generated })
-      ).catch(() => {});
-      return;
-    }
-    setAiText(null);
     setIndex((prev) => (prev + 1) % affirmations.length);
   };
 
@@ -190,24 +147,15 @@ export default function InlineAffirmation() {
       <View style={styles.card}>
         <View style={styles.headerRow}>
           <Text style={styles.headerLabel}>daily affirmation</Text>
-          {Boolean(aiText) && <Sparkles size={11} color={colors.accent} strokeWidth={2.4} />}
         </View>
 
-        {aiLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={colors.accent} />
-            <Text style={styles.loadingText}>finding the right words...</Text>
-          </View>
-        ) : (
-          <Text style={styles.affirmationText}>{currentText}</Text>
-        )}
+        <Text style={styles.affirmationText}>{currentText}</Text>
 
         <View style={styles.actionsRow}>
           <Pressable
             style={styles.iconBtn}
             onPress={nextAffirmation}
             hitSlop={8}
-            disabled={aiLoading}
             accessibilityRole="button"
             accessibilityLabel="Show a new affirmation"
           >

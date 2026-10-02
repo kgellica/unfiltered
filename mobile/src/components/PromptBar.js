@@ -4,13 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Shuffle, Plus, X, NotebookPen, Sparkles, Trash2, PenLine } from 'lucide-react-native';
 import { colors, radius } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
-import { generateJournalPrompt } from '../api/gemini';
+import { generateJournalPrompt } from '../api/groq';
 
 const MY_PROMPTS_KEY = 'unfiltered.myPrompts.v1';
 const MAX_MY_PROMPTS = 50;
 const MAX_PROMPT_LENGTH = 200;
 
-// Local fallback prompts — used when Gemini isn't configured or a request
+// Local fallback prompts — used when Groq isn't configured or a request
 // fails, and also shown in the "Show All" list alongside anything generated
 // this session.
 const PRESET_PROMPTS = [
