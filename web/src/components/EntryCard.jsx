@@ -1,5 +1,6 @@
 import { getReadableText, MOOD_META, formatShortDate, formatTime } from '../lib/color';
 import { Calendar, Tag as TagIcon, Sparkles } from 'lucide-react';
+import MoodFace from './MoodFace';
 
 function stripHtmlAndEntities(html = '') {
   if (!html) return '';
@@ -45,7 +46,7 @@ export default function EntryCard({ entry, onOpen }) {
           }}
           title={mood.label}
         >
-          <span>{mood.emoji}</span>
+          <MoodFace mood={entry.mood || 'good'} size={14} color={ink} active={true} strokeWidth={1.8} />
           <span className="text-[11px]">{mood.label}</span>
         </div>
       </div>

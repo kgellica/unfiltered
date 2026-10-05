@@ -152,7 +152,7 @@ export default function Auth() {
                 forgot password
               </h1>
               <p className="text-[13.5px] font-medium" style={{ color: 'var(--ink-soft)' }}>
-                enter your account email and set a new password 🌸
+                enter your account email and set a new password 
               </p>
             </div>
 

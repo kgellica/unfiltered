@@ -9,9 +9,14 @@ import {
   Calendar,
   ListOrdered,
   AlignLeft,
+  ImagePlus,
+  Loader2
 } from 'lucide-react';
 import { CARD_COLORS, MOOD_META, getReadableText, formatDiaryDate, formatTime, normalizeDateKey } from '../lib/color';
 import ConfirmModal from './ConfirmModal';
+import PromptBar from './PromptBar';
+import MoodFace from './MoodFace';
+import { uploadFile } from '../api/uploads';
 
 export default function EntryModal({ entry, onClose, onSave, onDelete, allExistingTags = [] }) {
   const isNew = !entry?.id;
@@ -29,10 +34,18 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [listMode, setListMode] = useState(0);
   const [newTagInput, setNewTagInput] = useState('');
+  
+  const [photoUris, setPhotoUris] = useState(() => {
+    if (!entry?.photo_path) return [];
+    if (Array.isArray(entry.photo_path)) return entry.photo_path;
+    return [entry.photo_path];
+  });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const bodyRef = useRef(null);
   const dateInputRef = useRef(null);
   const popupRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (bodyRef.current) {
@@ -40,7 +53,6 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
     }
   }, [entry?.id]);
 
-  // Close popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (popupRef.current && !popupRef.current.contains(e.target)) {
@@ -100,10 +112,43 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
     setTagList(tagList.filter((x) => x !== t));
   };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Strictly accept pictures and no other file formats
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload a valid picture format (e.g. JPG, PNG).');
+      e.target.value = '';
+      return;
+    }
+    
+    if (photoUris.length >= 5) {
+      alert('You can attach up to 5 photos per entry.');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadFile(file, 'photo');
+      if (url) {
+        setPhotoUris(prev => [...prev, url]);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to upload photo.');
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
+    }
+  };
+
+  const removePhoto = (index) => {
+    setPhotoUris(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSave = () => {
     const rawContent = bodyRef.current?.innerHTML || '';
     const textOnly = bodyRef.current?.innerText?.trim() || '';
-    if (!textOnly && !title.trim()) return;
+    if (!textOnly && !title.trim() && photoUris.length === 0) return;
 
     onSave({
       ...entry,
@@ -114,6 +159,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
       bg_color: color || '#FFFFFF',
       color: color || '',
       tags: tagList,
+      photo_path: photoUris.length > 0 ? photoUris : null,
     });
     setEditing(false);
   };
@@ -121,6 +167,16 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
   const confirmDeleteAction = () => {
     setShowDeleteConfirm(false);
     onDelete(entry.id);
+  };
+
+  const handleUsePrompt = (promptText) => {
+    if (!title.trim()) {
+      setTitle(promptText.length > 100 ? promptText.slice(0, 100) : promptText);
+    } else {
+      if (bodyRef.current) {
+        bodyRef.current.innerHTML = `<p>${promptText}</p><br>` + bodyRef.current.innerHTML;
+      }
+    }
   };
 
   const ink = color ? getReadableText(color) : 'var(--ink)';
@@ -211,6 +267,8 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
 
         {/* Modal Body / Editor Area */}
         <div className="px-6 md:px-8 py-5 flex-1 overflow-y-auto flex flex-col">
+          {editing && <PromptBar onUsePrompt={handleUsePrompt} />}
+
           {editing ? (
             <input
               value={title}
@@ -241,6 +299,24 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
               ))}
             </div>
           )}
+          
+          {photoUris.length > 0 && (
+            <div className="flex flex-wrap gap-3 mb-4">
+              {photoUris.map((uri, idx) => (
+                <div key={idx} className="relative group rounded-xl overflow-hidden shadow-sm border" style={{ borderColor: 'var(--border-soft)' }}>
+                  <img src={uri} alt={`Photo ${idx + 1}`} className="w-24 h-24 object-cover" />
+                  {editing && (
+                    <button
+                      onClick={() => removePhoto(idx)}
+                      className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={12} strokeWidth={3} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div
             ref={bodyRef}
@@ -268,7 +344,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                   }`}
                 style={{ color: ink }}
               >
-                <span className="text-xl">{currentMoodMeta.emoji}</span>
+                <MoodFace mood={mood} size={24} color={ink} active={true} />
                 <span className="text-[11.5px] font-bold">mood</span>
               </button>
 
@@ -299,13 +375,51 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                           }`}
                         title={m.label}
                       >
-                        <span className="text-2xl">{m.emoji}</span>
+                        <MoodFace mood={key} size={28} color="var(--ink)" active={mood === key} />
                         <span className="text-[10px] font-bold text-[var(--ink)]">{m.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
+            </div>
+            
+            {/* Photos */}
+            <div className="relative">
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                className="hidden" 
+                accept="image/*"
+                onChange={handlePhotoUpload}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (photoUris.length >= 5) {
+                    alert('Limit reached: 5 photos maximum.');
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }}
+                disabled={uploadingPhoto}
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all hover:bg-black/5 disabled:opacity-50`}
+                style={{ color: ink }}
+                title="Add photo"
+              >
+                <div className="relative">
+                  {uploadingPhoto ? <Loader2 size={20} className="animate-spin" /> : <ImagePlus size={20} />}
+                  {photoUris.length > 0 && !uploadingPhoto && (
+                    <span
+                      className="absolute -top-1 -right-2 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+                      style={{ background: 'var(--accent)' }}
+                    >
+                      {photoUris.length}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11.5px] font-bold">photo</span>
+              </button>
             </div>
 
             {/* Color */}
