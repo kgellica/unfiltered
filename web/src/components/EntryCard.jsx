@@ -18,6 +18,7 @@ export default function EntryCard({ entry, onOpen }) {
   const mood = MOOD_META[entry.mood] || MOOD_META.good;
   const plainText = stripHtmlAndEntities(entry.content);
   const formattedDate = formatShortDate(entry.entry_date);
+  const photos = Array.isArray(entry.photo_path) ? entry.photo_path : entry.photo_path ? [entry.photo_path] : [];
 
   return (
     <button
@@ -58,12 +59,31 @@ export default function EntryCard({ entry, onOpen }) {
         {entry.title || 'untitled reflection'}
       </h3>
 
-      <p
+            <p
         className="text-[13.5px] leading-relaxed line-clamp-3 font-medium flex-1"
         style={{ color: softInk }}
       >
         {plainText || 'no content written yet...'}
       </p>
+
+      {photos.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          {photos.slice(0, 3).map((uri, i) => (
+            <img
+              key={i}
+              src={uri}
+              alt=""
+              className="w-9 h-9 rounded-lg object-cover shrink-0"
+              style={{ border: hasCustomBg ? '1px solid rgba(0,0,0,0.08)' : '1px solid var(--border-soft)' }}
+            />
+          ))}
+          {photos.length > 3 && (
+            <span className="text-[10px] font-bold opacity-70" style={{ color: softInk }}>
+              +{photos.length - 3}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="mt-auto pt-2 flex items-center justify-between gap-2 border-t border-black/5 w-full">
         <div className="flex flex-wrap gap-1.5">

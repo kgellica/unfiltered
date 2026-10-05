@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useJournal } from '../hooks/useJournal';
 import ProfileDropdown from '../components/ProfileDropdown';
 import ConfirmModal from '../components/ConfirmModal';
-import { User, Settings as SettingsIcon, Palette, Camera, Lock, ChevronRight } from 'lucide-react';
+import api from '../api/axios';
+import { uploadFile } from '../api/uploads';
+import { User, Settings as SettingsIcon, Palette, Camera, Lock, ChevronRight, Loader2 } from 'lucide-react';
 
 const SETTINGS_PAGES = [
   { id: 'profile', label: 'profile', icon: User },
@@ -13,11 +15,36 @@ const SETTINGS_PAGES = [
 ];
 
 export default function Settings() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { mode, setMode, accent, setAccent, customAccent, setCustomAccent } = useTheme();
   const { entries, streak } = useJournal();
   const [activePage, setActivePage] = useState('profile');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef(null);
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('please upload a valid picture format (e.g. jpg, png).');
+      e.target.value = '';
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const url = await uploadFile(file, 'photo');
+      if (url) {
+        await api.patch('/user/profile', { avatar_url: url });
+        updateUser({ avatar_url: url });
+      }
+    } catch (err) {
+      alert(err.message || 'failed to upload photo.');
+    } finally {
+      setAvatarUploading(false);
+      e.target.value = '';
+    }
+  };
 
   // Get unique tags count from entries
   const uniqueTags = useMemo(() => {
@@ -47,16 +74,23 @@ export default function Settings() {
             {/* Profile Picture */}
             <div className="relative">
               <div
-                className="w-28 h-28 rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-lg"
+                className="w-28 h-28 rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-lg overflow-hidden"
                 style={{ background: 'var(--accent)' }}
               >
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user?.name || 'profile'} className="w-full h-full object-cover" />
+                ) : (
+                  user?.name?.charAt(0)?.toUpperCase() || 'U'
+                )}
               </div>
               <button
-                className="absolute bottom-1 right-1 w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition"
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="absolute bottom-1 right-1 w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition disabled:opacity-60"
                 style={{ background: 'var(--accent)', color: 'white' }}
               >
-                <Camera size={16} />
+                {avatarUploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
               </button>
             </div>
 
@@ -103,16 +137,23 @@ export default function Settings() {
             <div className="flex flex-col items-center">
               <div className="relative">
                 <div
-                  className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg"
+                  className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg overflow-hidden"
                   style={{ background: 'var(--accent)' }}
                 >
-                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt={user?.name || 'profile'} className="w-full h-full object-cover" />
+                  ) : (
+                    user?.name?.charAt(0)?.toUpperCase() || 'U'
+                  )}
                 </div>
                 <button
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition"
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition disabled:opacity-60"
                   style={{ background: 'var(--accent)', color: 'white' }}
                 >
-                  <Camera size={14} />
+                  {avatarUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                 </button>
               </div>
             </div>
@@ -359,6 +400,14 @@ export default function Settings() {
         </div>
       </div>
 
+     <input
+        type="file"
+        ref={avatarInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleAvatarChange}
+      />
+      
       {/* Logout Confirmation Modal */}
       <ConfirmModal
         isOpen={showLogoutConfirm}

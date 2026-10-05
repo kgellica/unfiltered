@@ -47,12 +47,13 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
-  const register = async (name, email, password, password_confirmation) => {
+  const register = async (name, email, password, password_confirmation, pin) => {
     const response = await api.post('/register', {
       name,
       email,
       password,
       password_confirmation,
+      pin,
     });
     const { access_token, user: userData } = response.data;
     localStorage.setItem('token', access_token);
@@ -72,8 +73,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (partial) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : prev));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

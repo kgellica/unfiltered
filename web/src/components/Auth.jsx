@@ -15,6 +15,7 @@ export default function Auth() {
     email: '',
     password: '',
     password_confirmation: '',
+    pin: '',
   });
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -44,7 +45,7 @@ export default function Auth() {
     setForgotSuccess(null);
 
     if (forgotData.password.length < 8) {
-      setForgotError('your new password needs to be at least 8 characters. ☁️');
+      setForgotError('your new password needs to be at least 8 characters. ');
       return;
     }
     if (forgotData.password !== forgotData.password_confirmation) {
@@ -55,11 +56,11 @@ export default function Auth() {
     setForgotLoading(true);
     try {
       await api.post('/password/forgot', forgotData);
-      setForgotSuccess('password updated! you can log in with your new password now. 🌸');
+      setForgotSuccess('password updated! you can log in with your new password now. ');
       setForgotData({ email: '', password: '', password_confirmation: '' });
     } catch (err) {
       setForgotError(
-        err.response?.data?.message || 'something went wrong. please try again. ☁️'
+        err.response?.data?.message || 'something went wrong. please try again. '
       );
     } finally {
       setForgotLoading(false);
@@ -112,7 +113,8 @@ export default function Auth() {
           formData.name,
           formData.email,
           formData.password,
-          formData.password_confirmation
+          formData.password_confirmation,
+          formData.pin
         );
       }
     } catch (err) {
@@ -321,7 +323,7 @@ export default function Auth() {
                     borderColor: 'var(--border-soft)',
                     color: 'var(--ink)',
                   }}
-                  placeholder="You@example.com"
+                  placeholder="yourname@gmail.com"
                 />
               </div>
 
@@ -416,6 +418,33 @@ export default function Auth() {
                       {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {!isLogin && (
+                <div>
+                  <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
+                    <Lock size={13} /> 6-Digit PIN
+                  </label>
+                  <input
+                    type="text"
+                    name="pin"
+                    required
+                    maxLength={6}
+                    pattern="\d{6}"
+                    value={formData.pin}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormData({ ...formData, pin: val });
+                    }}
+                    className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                    style={{
+                      background: 'var(--surface-muted)',
+                      borderColor: 'var(--border-soft)',
+                      color: 'var(--ink)',
+                    }}
+                    placeholder="123456"
+                  />
                 </div>
               )}
 
