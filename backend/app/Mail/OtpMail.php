@@ -1,3 +1,4 @@
+OtpMail.php
 <?php
 
 namespace App\Mail;
@@ -19,7 +20,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your Unfiltered verification code',
+            subject: 'Your unfiltered verification code',
         );
     }
 

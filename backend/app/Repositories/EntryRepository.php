@@ -1,3 +1,4 @@
+EntryRepository.php
 <?php
 
 namespace App\Repositories;
@@ -57,7 +58,6 @@ class EntryRepository
         return $entry;
     }
 
-
     public function delete(Entry $entry): void
     {
         $entry->delete();
@@ -73,3 +73,4 @@ class EntryRepository
             ->map(fn($d) => Carbon::parse($d)->format('Y-m-d'));
     }
 }
+
