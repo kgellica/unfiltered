@@ -28,6 +28,25 @@ export default function CalendarView() {
   );
   const [newEntryDate, setNewEntryDate] = useState('');
 
+  // Generate list of available years (e.g. current year - 3 to current year + 1)
+  const currentYear = new Date().getFullYear();
+  const availableYears = useMemo(
+    () => Array.from({ length: 5 }, (_, i) => currentYear - 3 + i),
+    [currentYear]
+  );
+
+  // Month & Year calculations
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth(); // 0-11
+  const monthOnlyName = currentDate
+    .toLocaleDateString('en-US', { month: 'long' })
+    .toLowerCase();
+
+  // Year change handler
+  const handleYearChange = (newYear) => {
+    setCurrentDate(new Date(newYear, month, 1));
+  };
+
   // Group entries by normalized date key YYYY-MM-DD
   const entriesByDate = useMemo(() => {
     const map = {};
@@ -40,13 +59,6 @@ export default function CalendarView() {
     });
     return map;
   }, [entries]);
-
-  // Month calculations
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth(); // 0-11
-  const monthName = currentDate
-    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    .toLowerCase();
 
   const prevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -125,7 +137,10 @@ export default function CalendarView() {
           }}
         >
           <CalendarHeader
-            monthName={monthName}
+            selectedYear={year}
+            onYearChange={handleYearChange}
+            availableYears={availableYears}
+            monthName={monthOnlyName}
             onPrev={prevMonth}
             onNext={nextMonth}
             onToday={() => setCurrentDate(new Date())}
