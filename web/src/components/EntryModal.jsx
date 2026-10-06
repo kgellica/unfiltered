@@ -20,6 +20,7 @@ import PromptBar from './PromptBar';
 import MoodFace from './MoodFace';
 import { uploadFile } from '../api/uploads';
 import { generateEntrySummary } from '../api/groq';
+import { analyzeMood } from '../lib/moodAnalyzer';
 
 export default function EntryModal({ entry, onClose, onSave, onDelete, allExistingTags = [] }) {
   const isNew = !entry?.id;
@@ -57,11 +58,39 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
   const fileInputRef = useRef(null);
   const insightPanelRef = useRef(null);
 
-  useEffect(() => {
+    useEffect(() => {
     if (bodyRef.current) {
       bodyRef.current.innerHTML = entry?.content || '';
+      setPlainContent(bodyRef.current.innerText || '');
     }
   }, [entry?.id]);
+
+  // On-device mood suggestion — no network call. Waits for a typing pause,
+  // scores the plain text locally, and offers a pill near the toolbar if
+  // it disagrees with whatever mood is currently selected.
+  const [plainContent, setPlainContent] = useState('');
+  const [suggestedMood, setSuggestedMood] = useState(null);
+  const moodDebounceRef = useRef(null);
+
+  useEffect(() => {
+    if (moodDebounceRef.current) clearTimeout(moodDebounceRef.current);
+    moodDebounceRef.current = setTimeout(() => {
+      const result = analyzeMood(plainContent);
+      if (result && result.mood && result.confidence >= 0.3 && result.mood !== mood) {
+        setSuggestedMood(result.mood);
+      } else {
+        setSuggestedMood(null);
+      }
+    }, 700);
+    return () => clearTimeout(moodDebounceRef.current);
+  }, [plainContent, mood]);
+
+  const acceptSuggestedMood = () => {
+    if (suggestedMood) setMood(suggestedMood);
+    setSuggestedMood(null);
+  };
+
+  const dismissSuggestedMood = () => setSuggestedMood(null);
 
   // Close insight panel when clicking outside it
   useEffect(() => {
@@ -384,9 +413,38 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
             suppressContentEditableWarning
             className={`diary-content flex-1 text-[15px] leading-relaxed outline-none min-h-[220px] font-medium ${editing ? 'empty:before:content-[attr(data-placeholder)] empty:before:opacity-40' : ''
               }`}
-            data-placeholder="pour your thoughts here... unfiltered, calm, and true."
+                        data-placeholder="pour your thoughts here... unfiltered, calm, and true."
             style={{ color: ink }}
+            onInput={(e) => setPlainContent(e.currentTarget.innerText)}
           />
+
+          {editing && suggestedMood && (
+            <div
+              className="flex items-center gap-2 mt-3 px-3.5 py-2.5 rounded-2xl animate-cute-pop"
+              style={{ background: 'var(--accent-soft, rgba(108,140,255,0.12))' }}
+            >
+              <Sparkles size={14} style={{ color: 'var(--accent)' }} strokeWidth={2.4} />
+              <span className="text-[12.5px] font-medium flex-1 lowercase" style={{ color: ink }}>
+                sounds like you're feeling {MOOD_META[suggestedMood].label}. use it?
+              </span>
+              <button
+                type="button"
+                onClick={acceptSuggestedMood}
+                className="text-[12px] font-bold px-2.5 py-1 rounded-full"
+                style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}
+              >
+                use
+              </button>
+              <button
+                type="button"
+                onClick={dismissSuggestedMood}
+                className="p-1 rounded-full hover:bg-black/5"
+                aria-label="dismiss mood suggestion"
+              >
+                <X size={13} style={{ color: ink, opacity: 0.6 }} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Bottom Edit Action Toolbar */}
