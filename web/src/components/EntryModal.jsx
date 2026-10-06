@@ -10,13 +10,16 @@ import {
   ListOrdered,
   AlignLeft,
   ImagePlus,
-  Loader2
+  Loader2,
+  Sparkles,
+  Bot
 } from 'lucide-react';
 import { CARD_COLORS, MOOD_META, getReadableText, formatDiaryDate, formatTime, normalizeDateKey } from '../lib/color';
 import ConfirmModal from './ConfirmModal';
 import PromptBar from './PromptBar';
 import MoodFace from './MoodFace';
 import { uploadFile } from '../api/uploads';
+import { generateEntrySummary } from '../api/groq';
 
 export default function EntryModal({ entry, onClose, onSave, onDelete, allExistingTags = [] }) {
   const isNew = !entry?.id;
@@ -42,16 +45,35 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
   });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // AI insight panel state
+  const [insightOpen, setInsightOpen] = useState(false);
+  const [insightText, setInsightText] = useState(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState(false);
+
   const bodyRef = useRef(null);
   const dateInputRef = useRef(null);
   const popupRef = useRef(null);
   const fileInputRef = useRef(null);
+  const insightPanelRef = useRef(null);
 
   useEffect(() => {
     if (bodyRef.current) {
       bodyRef.current.innerHTML = entry?.content || '';
     }
   }, [entry?.id]);
+
+  // Close insight panel when clicking outside it
+  useEffect(() => {
+    if (!insightOpen) return;
+    const handleOutside = (e) => {
+      if (insightPanelRef.current && !insightPanelRef.current.contains(e.target)) {
+        setInsightOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [insightOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -177,6 +199,25 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
         bodyRef.current.innerHTML = `<p>${promptText}</p><br>` + bodyRef.current.innerHTML;
       }
     }
+  };
+
+  const runInsight = async () => {
+    if (!entry?.id) return;
+    setInsightLoading(true);
+    setInsightError(false);
+    const text = await generateEntrySummary(entry.id);
+    setInsightLoading(false);
+    if (text) {
+      setInsightText(text);
+    } else {
+      setInsightText(null);
+      setInsightError(true);
+    }
+  };
+
+  const openInsightPanel = () => {
+    setInsightOpen(true);
+    if (!insightText && !insightLoading) runInsight();
   };
 
   const ink = color ? getReadableText(color) : 'var(--ink)';
@@ -650,6 +691,165 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
         onConfirm={confirmDeleteAction}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {/* AI Insight FAB — only for saved entries */}
+      {!isNew && (
+        <div
+          ref={insightPanelRef}
+          style={{ position: 'fixed', bottom: '2.5rem', right: '2.5rem', zIndex: 60 }}
+        >
+          {/* Floating insights panel */}
+          {insightOpen && (
+            <div
+              className="animate-cute-pop"
+              style={{
+                position: 'absolute',
+                bottom: 'calc(100% + 12px)',
+                right: 0,
+                width: 290,
+                background: 'var(--surface)',
+                border: '1.5px solid var(--border-soft)',
+                borderRadius: 20,
+                borderBottomRightRadius: 4,
+                boxShadow: 'var(--modal-shadow)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Panel header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  borderBottom: '1px solid var(--border-soft)',
+                  background: 'var(--surface-muted)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: '50%',
+                      background: 'var(--accent)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Bot size={14} color="white" strokeWidth={2.4} />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--ink)',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    journal insights
+                  </span>
+                </div>
+                <button
+                  onClick={() => setInsightOpen(false)}
+                  aria-label="close insights"
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--ink-soft)',
+                  }}
+                >
+                  <X size={14} strokeWidth={2.4} />
+                </button>
+              </div>
+
+              {/* Panel body */}
+              <div style={{ padding: '14px', minHeight: 56, display: 'flex', alignItems: 'flex-start' }}>
+                {insightLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Loader2
+                      size={16}
+                      className="animate-spin"
+                      style={{ color: 'var(--accent)', flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 13, color: 'var(--ink-faint)', fontStyle: 'italic' }}>
+                      reading your entry...
+                    </span>
+                  </div>
+                ) : insightError ? (
+                  <div>
+                    <p style={{ fontSize: 13, color: '#e57373', lineHeight: 1.5, margin: 0 }}>
+                      couldn't summarize this entry.
+                    </p>
+                    <button
+                      onClick={runInsight}
+                      style={{
+                        marginTop: 8,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: 'var(--accent)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      try again ↺
+                    </button>
+                  </div>
+                ) : insightText ? (
+                  <p
+                    style={{
+                      fontSize: 13.5,
+                      color: 'var(--ink)',
+                      lineHeight: 1.65,
+                      margin: 0,
+                      maxHeight: 200,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {insightText}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {/* FAB button */}
+          <button
+            onClick={insightOpen ? () => setInsightOpen(false) : openInsightPanel}
+            title="journal insights"
+            aria-label="journal insights"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              background: insightOpen ? 'var(--accent)' : 'var(--surface)',
+              border: '1.5px solid var(--border-soft)',
+              boxShadow: 'var(--modal-shadow)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.18s, transform 0.15s',
+              color: insightOpen ? 'white' : 'var(--accent)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            <Sparkles size={20} strokeWidth={2.2} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

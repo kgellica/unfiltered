@@ -6,7 +6,8 @@ import ProfileDropdown from '../components/ProfileDropdown';
 import ConfirmModal from '../components/ConfirmModal';
 import api from '../api/axios';
 import { uploadFile } from '../api/uploads';
-import { User, Settings as SettingsIcon, Palette, Camera, Lock, ChevronRight, Loader2 } from 'lucide-react';
+import { User, Settings as SettingsIcon, Palette, Camera, Lock, ChevronRight, Loader2, Eye, EyeOff, Check } from 'lucide-react';
+
 
 const SETTINGS_PAGES = [
   { id: 'profile', label: 'profile', icon: User },
@@ -22,6 +23,17 @@ export default function Settings() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
+
+  // Password change state
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwErrors, setPwErrors] = useState({});
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
@@ -187,52 +199,139 @@ export default function Settings() {
             </div>
 
             {/* Change Password */}
-            <div className="pt-2 border-t border-[var(--border-soft)]">
+            <form onSubmit={handleChangePassword} className="pt-2 border-t border-[var(--border-soft)]">
               <h3 className="text-[14px] font-bold mb-3" style={{ color: 'var(--ink)' }}>
                 change password
               </h3>
+
+              {pwErrors.general && (
+                <p className="text-[12px] text-red-500 mb-3 px-1">{pwErrors.general}</p>
+              )}
+              {pwSuccess && (
+                <div className="flex items-center gap-2 text-[12px] font-bold text-emerald-500 mb-3 px-1">
+                  <Check size={14} strokeWidth={2.5} /> password updated successfully!
+                </div>
+              )}
+
               <div className="space-y-3">
+                {/* Current Password */}
                 <div>
                   <label className="text-[12px] font-bold text-[var(--ink-soft)] block mb-1.5">
                     current password
                   </label>
-                  <input
-                    type="password"
-                    placeholder="enter current password"
-                    className="w-full px-4 py-3 rounded-xl text-[14px] font-medium outline-none border border-[var(--border-soft)] text-[var(--ink)] placeholder:text-[var(--ink-faint)]"
-                    style={{ background: 'var(--surface-muted)' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showCurrentPw ? 'text' : 'password'}
+                      value={currentPw}
+                      onChange={(e) => { setCurrentPw(e.target.value); setPwErrors((p) => ({ ...p, current_password: undefined, general: undefined })); setPwSuccess(false); }}
+                      placeholder="enter current password"
+                      className="w-full px-4 py-3 pr-11 rounded-xl text-[14px] font-medium outline-none border text-[var(--ink)] placeholder:text-[var(--ink-faint)] transition"
+                      style={{
+                        background: 'var(--surface-muted)',
+                        borderColor: pwErrors.current_password ? '#ef4444' : 'var(--border-soft)',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPw((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] hover:text-[var(--ink-soft)] transition"
+                      tabIndex={-1}
+                      aria-label={showCurrentPw ? 'hide password' : 'show password'}
+                    >
+                      {showCurrentPw ? <EyeOff size={17} strokeWidth={2} /> : <Eye size={17} strokeWidth={2} />}
+                    </button>
+                  </div>
+                  {pwErrors.current_password && (
+                    <p className="text-[11px] text-red-500 mt-1 px-1">{pwErrors.current_password}</p>
+                  )}
                 </div>
+
+                {/* New Password */}
                 <div>
                   <label className="text-[12px] font-bold text-[var(--ink-soft)] block mb-1.5">
                     new password
                   </label>
-                  <input
-                    type="password"
-                    placeholder="enter new password"
-                    className="w-full px-4 py-3 rounded-xl text-[14px] font-medium outline-none border border-[var(--border-soft)] text-[var(--ink)] placeholder:text-[var(--ink-faint)]"
-                    style={{ background: 'var(--surface-muted)' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNewPw ? 'text' : 'password'}
+                      value={newPw}
+                      onChange={(e) => { setNewPw(e.target.value); setPwErrors((p) => ({ ...p, password: undefined })); setPwSuccess(false); }}
+                      placeholder="min 8 chars, 1 uppercase, 1 number"
+                      className="w-full px-4 py-3 pr-11 rounded-xl text-[14px] font-medium outline-none border text-[var(--ink)] placeholder:text-[var(--ink-faint)] transition"
+                      style={{
+                        background: 'var(--surface-muted)',
+                        borderColor: pwErrors.password ? '#ef4444' : 'var(--border-soft)',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPw((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] hover:text-[var(--ink-soft)] transition"
+                      tabIndex={-1}
+                      aria-label={showNewPw ? 'hide password' : 'show password'}
+                    >
+                      {showNewPw ? <EyeOff size={17} strokeWidth={2} /> : <Eye size={17} strokeWidth={2} />}
+                    </button>
+                  </div>
+                  {/* Format hints */}
+                  {newPw.length > 0 && (() => {
+                    const fErrs = validatePassword(newPw);
+                    return fErrs.length > 0 ? (
+                      <p className="text-[11px] text-amber-500 mt-1 px-1">needs: {fErrs.join(' · ')}</p>
+                    ) : (
+                      <p className="text-[11px] text-emerald-500 mt-1 px-1 flex items-center gap-1"><Check size={11} strokeWidth={3} /> looks good</p>
+                    );
+                  })()}
+                  {pwErrors.password && (
+                    <p className="text-[11px] text-red-500 mt-1 px-1">{pwErrors.password}</p>
+                  )}
                 </div>
+
+                {/* Confirm New Password */}
                 <div>
                   <label className="text-[12px] font-bold text-[var(--ink-soft)] block mb-1.5">
                     confirm new password
                   </label>
-                  <input
-                    type="password"
-                    placeholder="confirm new password"
-                    className="w-full px-4 py-3 rounded-xl text-[14px] font-medium outline-none border border-[var(--border-soft)] text-[var(--ink)] placeholder:text-[var(--ink-faint)]"
-                    style={{ background: 'var(--surface-muted)' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPw ? 'text' : 'password'}
+                      value={confirmPw}
+                      onChange={(e) => { setConfirmPw(e.target.value); setPwErrors((p) => ({ ...p, confirm: undefined })); setPwSuccess(false); }}
+                      placeholder="re-enter new password"
+                      className="w-full px-4 py-3 pr-11 rounded-xl text-[14px] font-medium outline-none border text-[var(--ink)] placeholder:text-[var(--ink-faint)] transition"
+                      style={{
+                        background: 'var(--surface-muted)',
+                        borderColor: pwErrors.confirm ? '#ef4444' : 'var(--border-soft)',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPw((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] hover:text-[var(--ink-soft)] transition"
+                      tabIndex={-1}
+                      aria-label={showConfirmPw ? 'hide password' : 'show password'}
+                    >
+                      {showConfirmPw ? <EyeOff size={17} strokeWidth={2} /> : <Eye size={17} strokeWidth={2} />}
+                    </button>
+                  </div>
+                  {confirmPw.length > 0 && newPw !== confirmPw && !pwErrors.confirm && (
+                    <p className="text-[11px] text-amber-500 mt-1 px-1">passwords don't match yet</p>
+                  )}
+                  {pwErrors.confirm && (
+                    <p className="text-[11px] text-red-500 mt-1 px-1">{pwErrors.confirm}</p>
+                  )}
                 </div>
+
                 <button
-                  className="w-full py-3 rounded-2xl text-[14px] font-bold text-white transition hover:scale-105"
+                  type="submit"
+                  disabled={pwLoading}
+                  className="w-full py-3 rounded-2xl text-[14px] font-bold text-white transition hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={{ background: 'var(--accent)' }}
                 >
-                  update password
+                  {pwLoading ? <><Loader2 size={15} className="animate-spin" /> updating...</> : 'update password'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         );
 

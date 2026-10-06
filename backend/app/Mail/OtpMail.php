@@ -1,4 +1,3 @@
-OtpMail.php
 <?php
 
 namespace App\Mail;

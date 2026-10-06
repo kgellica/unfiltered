@@ -9,3 +9,14 @@ export async function generateJournalPrompt() {
     return null;
   }
 }
+
+export async function generateEntrySummary(entryId) {
+  try {
+    const { data } = await client.get(`/entries/${entryId}/ai-summary`);
+    return data?.text || null;
+  } catch (err) {
+    console.warn('[ai] entry-summary failed:', err?.response?.status, err?.message);
+    return null;
+  }
+}
+

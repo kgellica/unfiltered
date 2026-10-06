@@ -1,4 +1,3 @@
-EntryRepository.php
 <?php
 
 namespace App\Repositories;
