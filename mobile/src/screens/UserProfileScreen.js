@@ -1,14 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Mail, CalendarDays, NotebookPen, Flame, Sparkles } from 'lucide-react-native';
+import { Mail, CalendarDays } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { getStats } from '../api/entries';
 import { colors, radius, spacing, cardShadow } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
 
-// Read-only view of the account: who you are + a quick snapshot of your
-// journaling stats. Editing lives on the separate "Edit Profile" screen.
+// Read-only view of the account: who you are + a quick snapshot of your journaling stats. Editing lives on the separate "Edit Profile" screen.
 export default function UserProfileScreen() {
   const { mode, accent } = useTheme(); // subscribe so styles rebuild with the current accent/mode
   const styles = useMemo(() => createStyles(), [mode, accent]);
@@ -20,7 +19,7 @@ export default function UserProfileScreen() {
       const data = await getStats();
       setStats(data);
     } catch (e) {
-      // keep previous stats on failure
+    
     }
   }, []);
 
@@ -60,17 +59,14 @@ export default function UserProfileScreen() {
       <Text style={styles.sectionLabel}>YOUR JOURNAL, AT A GLANCE</Text>
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
-          <NotebookPen size={18} color={colors.accent} strokeWidth={2.2} />
           <Text style={styles.statValue}>{stats.total_entries}</Text>
           <Text style={styles.statLabel}>entries</Text>
         </View>
         <View style={styles.statCard}>
-          <Flame size={18} color={colors.accent} strokeWidth={2.2} />
           <Text style={styles.statValue}>{stats.current_streak}</Text>
           <Text style={styles.statLabel}>day streak</Text>
         </View>
         <View style={styles.statCard}>
-          <Sparkles size={18} color={colors.accent} strokeWidth={2.2} />
           <Text style={styles.statValue}>{stats.total_tags}</Text>
           <Text style={styles.statLabel}>tags used</Text>
         </View>
@@ -103,10 +99,11 @@ const createStyles = () => StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingVertical: 16,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
     ...cardShadow,
   },
-  statValue: { fontSize: 17, fontWeight: '800', color: colors.onBackground },
+  statValue: { fontSize: 18, fontWeight: '800', color: colors.onBackground, marginBottom: 2 },
   statLabel: { fontSize: 10.5, fontWeight: '700', color: colors.onSurfaceFaint },
 });
