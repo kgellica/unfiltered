@@ -239,9 +239,9 @@ export default function Home() {
           </div>
         ) : (
           /* Master-Detail Split View when a Month is Clicked */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-cute-fade">
-            {/* Left Column: Collapsed Vertical Shelf Bar */}
-            <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-cute-fade lg:h-[calc(100vh-10rem)]">
+            {/* Left Column: Fixed Sticky Vertical Shelf Bar */}
+            <div className="lg:col-span-4 flex flex-col gap-4 lg:sticky lg:top-8 shrink-0">
               <div className="flex items-center justify-between pb-3 border-b border-[var(--border-soft)]">
                 <button
                   onClick={() => setSelectedMonth(null)}
@@ -256,7 +256,7 @@ export default function Home() {
               </div>
 
               {/* Vertical Stack of Month Spines */}
-              <div className="flex flex-col gap-1 max-h-[600px] overflow-y-auto pr-1 scrollbar-none">
+              <div className="flex flex-col gap-1 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1 scrollbar-none">
                 {MONTH_DATA.map((m) => {
                   const isSelected = selectedMonth === m.num;
                   const count = monthlyStats[m.num]?.count || 0;
@@ -300,10 +300,10 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right Column: Month Header Stats & Stacked Entries */}
-            <div className="lg:col-span-8 flex flex-col gap-6">
+            {/* Right Column: Independent Scrollable Entries Container */}
+            <div className="lg:col-span-8 flex flex-col gap-6 lg:h-full lg:overflow-y-auto lg:pr-2">
               <div
-                className="rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
+                className="rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm shrink-0"
                 style={{
                   background: 'var(--surface)',
                   border: '1.5px solid var(--border-soft)',
@@ -352,7 +352,7 @@ export default function Home() {
               </div>
 
               {/* Entries Action Bar */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between shrink-0">
                 <h3
                   className="text-base font-bold text-[var(--ink)]"
                   style={{ fontFamily: 'var(--font-display)' }}
@@ -373,26 +373,11 @@ export default function Home() {
                   onAction={openNew}
                 />
               ) : (
-                <div className="flex flex-col gap-4">
-                  {/* Show first 5 entries */}
-                  {sortedMonthEntries.slice(0, 5).map((entry) => (
+                <div className="flex flex-col gap-4 pb-8">
+                  {/* Show entries */}
+                  {sortedMonthEntries.map((entry) => (
                     <EntryCard key={entry.id} entry={entry} onOpen={openEntry} />
                   ))}
-
-                  {/* View All Button - only show if more than 5 entries */}
-                  {sortedMonthEntries.length > 5 && (
-                    <button
-                      onClick={() => navigate(`/journal?month=${selectedMonth}&year=${selectedYear}`)}
-                      className="w-full py-3 rounded-2xl text-[14px] font-bold transition hover:scale-[1.02] active:scale-95 cursor-pointer"
-                      style={{
-                        background: 'var(--surface-muted)',
-                        color: 'var(--ink)',
-                        border: '1px solid var(--border-soft)',
-                      }}
-                    >
-                      view all {sortedMonthEntries.length} entries for {currentMonthMeta.name}
-                    </button>
-                  )}
                 </div>
               )}
             </div>
