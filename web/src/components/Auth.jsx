@@ -1,13 +1,69 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../api/axios';
 import { Eye, EyeOff, Lock, Mail, User as UserIcon, X } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
+// Password Security Validation Rules
+const passwordRules = (password = '') => [
+  { label: '8+ chars', valid: password.length >= 8 },
+  { label: 'Uppercase', valid: /[A-Z]/.test(password) },
+  { label: 'Lowercase', valid: /[a-z]/.test(password) },
+  { label: 'Number', valid: /\d/.test(password) },
+  { label: 'Symbol', valid: /[@$!%*?&#^()_\-+=]/.test(password) },
+];
+
+const validatePassword = (password) => {
+  if (!password) return 'Password is required.';
+  const rules = passwordRules(password);
+  const failed = rules.find((r) => !r.valid);
+  return failed ? `Password requires: ${failed.label.toLowerCase()}` : null;
+};
+
+// Reusable Password Strength Progress Bar Component
+const PasswordStrengthBar = ({ password = '' }) => {
+  const rules = passwordRules(password);
+  const passedCount = rules.filter((r) => r.valid).length;
+  const percentage = (passedCount / rules.length) * 100;
+
+  // Dynamic progress bar colors based on strength level
+  const getProgressColor = () => {
+    if (passedCount <= 1) return 'bg-red-500';
+    if (passedCount <= 3) return 'bg-amber-500';
+    if (passedCount === 4) return 'bg-yellow-400';
+    return 'bg-emerald-500';
+  };
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {/* Outer track */}
+      <div className="w-full h-1.5 bg-[var(--surface-muted)] border border-[var(--border-soft)] rounded-full overflow-hidden">
+        {/* Animated filling bar */}
+        <div
+          className={`h-full transition-all duration-300 ease-out ${getProgressColor()}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+
+      {/* Requirement status text */}
+      <div className="flex justify-between items-center text-[11px] font-medium text-[var(--ink-soft)] px-0.5">
+        <span>
+          {passedCount === 0 && 'Enter password'}
+          {passedCount > 0 && passedCount < 5 && `${passedCount}/5 requirements met`}
+          {passedCount === 5 && '✓ Strong password!'}
+        </span>
+        <span className="opacity-75">
+          {rules.filter((r) => !r.valid).map((r) => r.label).join(' • ')}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
-  const [view, setView] = useState('form'); // 'form' | 'forgot'
+  const [view, setView] = useState('form'); 
   const { login, register } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -17,15 +73,28 @@ export default function Auth() {
     password_confirmation: '',
     pin: '',
   });
+
   const [rememberMe, setRememberMe] = useState(true);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('remembered_email');
+    if (savedEmail) {
+      setFormData((prev) => ({ ...prev, email: savedEmail }));
+      setRememberMe(true);
+    }
+  }, []);
 
   const [forgotData, setForgotData] = useState({ email: '', password: '', password_confirmation: '' });
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState(null);
   const [forgotSuccess, setForgotSuccess] = useState(null);
 
+  // Visibility toggle states
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showForgotConfirmPassword, setShowForgotConfirmPassword] = useState(false);
+
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -44,30 +113,31 @@ export default function Auth() {
     setForgotError(null);
     setForgotSuccess(null);
 
-    if (forgotData.password.length < 8) {
-      setForgotError('your new password needs to be at least 8 characters. ');
+    const passwordValidationError = validatePassword(forgotData.password);
+    if (passwordValidationError) {
+      setForgotError(passwordValidationError);
       return;
     }
+
     if (forgotData.password !== forgotData.password_confirmation) {
-      setForgotError("those passwords don't match. ☁️");
+      setForgotError("Passwords do not match.");
       return;
     }
 
     setForgotLoading(true);
     try {
       await api.post('/password/forgot', forgotData);
-      setForgotSuccess('password updated! you can log in with your new password now. ');
+      setForgotSuccess('Password updated! You can log in with your new password now.');
       setForgotData({ email: '', password: '', password_confirmation: '' });
     } catch (err) {
       setForgotError(
-        err.response?.data?.message || 'something went wrong. please try again. '
+        err.response?.data?.message || 'Something went wrong. Please try again.'
       );
     } finally {
       setForgotLoading(false);
     }
   };
 
-  // Google OAuth Login Handler
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
@@ -98,15 +168,35 @@ export default function Auth() {
     setError(null);
     setLoading(true);
 
-    // Check terms agreement for registration
-    if (!isLogin && !agreeToTerms) {
-      setError('Please agree to the terms and conditions to continue.');
-      setLoading(false);
-      return;
+    if (!isLogin) {
+      const passwordValidationError = validatePassword(formData.password);
+      if (passwordValidationError) {
+        setError(passwordValidationError);
+        setLoading(false);
+        return;
+      }
+
+      if (formData.password !== formData.password_confirmation) {
+        setError("Passwords do not match.");
+        setLoading(false);
+        return;
+      }
+
+      if (!agreeToTerms) {
+        setError('Please agree to the terms and conditions to continue.');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
       if (isLogin) {
+        if (rememberMe) {
+          localStorage.setItem('remembered_email', formData.email);
+        } else {
+          localStorage.removeItem('remembered_email');
+        }
+
         await login(formData.email, formData.password, rememberMe);
       } else {
         await register(
@@ -154,7 +244,7 @@ export default function Auth() {
                 forgot password
               </h1>
               <p className="text-[13.5px] font-medium" style={{ color: 'var(--ink-soft)' }}>
-                enter your account email and set a new password 
+                enter your account email and set a new password
               </p>
             </div>
 
@@ -181,6 +271,7 @@ export default function Auth() {
                   type="email"
                   name="email"
                   required
+                  autoComplete="email"
                   value={forgotData.email}
                   onChange={handleForgotChange}
                   className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
@@ -189,7 +280,7 @@ export default function Auth() {
                     borderColor: 'var(--border-soft)',
                     color: 'var(--ink)',
                   }}
-                  placeholder="you@example.com"
+                  placeholder="Enter your email address"
                 />
               </div>
 
@@ -197,40 +288,67 @@ export default function Auth() {
                 <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
                   <Lock size={13} /> new password
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  value={forgotData.password}
-                  onChange={handleForgotChange}
-                  className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                  style={{
-                    background: 'var(--surface-muted)',
-                    borderColor: 'var(--border-soft)',
-                    color: 'var(--ink)',
-                  }}
-                  placeholder="at least 8 characters"
-                />
+                <div className="relative">
+                  <input
+                    type={showForgotPassword ? 'text' : 'password'}
+                    name="password"
+                    required
+                    autoComplete="new-password"
+                    value={forgotData.password}
+                    onChange={handleForgotChange}
+                    className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                    style={{
+                      background: 'var(--surface-muted)',
+                      borderColor: 'var(--border-soft)',
+                      color: 'var(--ink)',
+                    }}
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(!showForgotPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
+                    aria-label={showForgotPassword ? 'Hide Password' : 'Show Password'}
+                  >
+                    {showForgotPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {/* Loading Line / Progress Bar Effect */}
+                {forgotData.password.length > 0 && (
+                  <PasswordStrengthBar password={forgotData.password} />
+                )}
               </div>
 
               <div>
                 <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
                   <Lock size={13} /> confirm new password
                 </label>
-                <input
-                  type="password"
-                  name="password_confirmation"
-                  required
-                  value={forgotData.password_confirmation}
-                  onChange={handleForgotChange}
-                  className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                  style={{
-                    background: 'var(--surface-muted)',
-                    borderColor: 'var(--border-soft)',
-                    color: 'var(--ink)',
-                  }}
-                  placeholder="re-enter your new password"
-                />
+                <div className="relative">
+                  <input
+                    type={showForgotConfirmPassword ? 'text' : 'password'}
+                    name="password_confirmation"
+                    required
+                    autoComplete="new-password"
+                    value={forgotData.password_confirmation}
+                    onChange={handleForgotChange}
+                    className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
+                    style={{
+                      background: 'var(--surface-muted)',
+                      borderColor: 'var(--border-soft)',
+                      color: 'var(--ink)',
+                    }}
+                    placeholder="Re-enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
+                    aria-label={showForgotConfirmPassword ? 'Hide Confirm Password' : 'Show Confirm Password'}
+                  >
+                    {showForgotConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <button
@@ -258,7 +376,6 @@ export default function Auth() {
           </>
         ) : (
           <>
-            {/* Brand Header with Logo */}
             <div className="text-center flex flex-col items-center gap-1.5">
               <img
                 src={logoImg}
@@ -294,6 +411,7 @@ export default function Auth() {
                     type="text"
                     name="name"
                     required
+                    autoComplete="name"
                     value={formData.name}
                     onChange={handleChange}
                     className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
@@ -302,7 +420,7 @@ export default function Auth() {
                       borderColor: 'var(--border-soft)',
                       color: 'var(--ink)',
                     }}
-                    placeholder="E.g. Karylle"
+                    placeholder="Enter your name"
                   />
                 </div>
               )}
@@ -315,6 +433,7 @@ export default function Auth() {
                   type="email"
                   name="email"
                   required
+                  autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
@@ -323,7 +442,7 @@ export default function Auth() {
                     borderColor: 'var(--border-soft)',
                     color: 'var(--ink)',
                   }}
-                  placeholder="yourname@gmail.com"
+                  placeholder="Enter your email address"
                 />
               </div>
 
@@ -336,6 +455,7 @@ export default function Auth() {
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     required
+                    autoComplete={isLogin ? 'current-password' : 'new-password'}
                     value={formData.password}
                     onChange={handleChange}
                     className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
@@ -344,7 +464,7 @@ export default function Auth() {
                       borderColor: 'var(--border-soft)',
                       color: 'var(--ink)',
                     }}
-                    placeholder="••••••••"
+                    placeholder={isLogin ? '••••••••' : 'Enter password'}
                   />
                   <button
                     type="button"
@@ -355,23 +475,21 @@ export default function Auth() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+
+                {/* Loading Line / Progress Bar Effect for Registration */}
+                {!isLogin && formData.password.length > 0 && (
+                  <PasswordStrengthBar password={formData.password} />
+                )}
+
                 {isLogin && (
                   <div className="mt-2 flex items-center justify-between">
                     <label className="flex items-center gap-2 text-[11.5px] font-bold text-[var(--ink-soft)] cursor-pointer select-none">
-                      <span
-                        onClick={() => setRememberMe((prev) => !prev)}
-                        className="flex items-center justify-center w-4 h-4 rounded-md border transition"
-                        style={{
-                          borderColor: 'var(--border-soft)',
-                          background: rememberMe ? 'var(--accent)' : 'var(--surface-muted)',
-                        }}
-                      >
-                        {rememberMe && (
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" strokeWidth="3">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </span>
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-[var(--border-soft)] cursor-pointer accent-[var(--accent)]"
+                      />
                       remember me
                     </label>
                     <button
@@ -399,6 +517,7 @@ export default function Auth() {
                       type={showConfirmPassword ? 'text' : 'password'}
                       name="password_confirmation"
                       required
+                      autoComplete="new-password"
                       value={formData.password_confirmation}
                       onChange={handleChange}
                       className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
@@ -407,7 +526,7 @@ export default function Auth() {
                         borderColor: 'var(--border-soft)',
                         color: 'var(--ink)',
                       }}
-                      placeholder="••••••••"
+                      placeholder="Re-enter password"
                     />
                     <button
                       type="button"
@@ -448,7 +567,6 @@ export default function Auth() {
                 </div>
               )}
 
-              {/* Terms & Conditions Checkbox (only for registration) */}
               {!isLogin && (
                 <div className="flex items-start gap-2 pt-1">
                   <input
@@ -541,7 +659,6 @@ export default function Auth() {
         )}
       </div>
 
-      {/* Terms & Conditions Modal */}
       {showTermsModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -557,7 +674,6 @@ export default function Auth() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div className="flex items-center justify-between mb-4">
               <h2
                 className="text-xl font-bold"
@@ -574,9 +690,7 @@ export default function Auth() {
               </button>
             </div>
 
-            {/* Terms Content */}
             <div className="space-y-4 text-[13px] font-medium leading-relaxed normal-case" style={{ color: 'var(--ink-soft)' }}>
-              {/* Terms of Service */}
               <div>
                 <h3 className="text-[15px] font-bold text-[var(--ink)] mb-2">Terms of Service</h3>
                 <p className="mb-2">By using Unfiltered, you agree to the following terms:</p>
@@ -600,7 +714,6 @@ export default function Auth() {
                 </div>
               </div>
 
-              {/* Privacy Policy */}
               <div>
                 <h3 className="text-[15px] font-bold text-[var(--ink)] mb-2">Privacy Policy</h3>
                 <p className="mb-2">Your privacy matters to us. Here's how we handle your data:</p>
@@ -624,16 +737,13 @@ export default function Auth() {
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="border-t border-[var(--border-soft)] pt-3" />
 
-              {/* Acknowledgment */}
               <p className="text-[12px] italic opacity-75">
                 By tapping "I Agree", you acknowledge that you have read and understood these terms.
               </p>
             </div>
 
-            {/* Action Buttons - Side by Side */}
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => {

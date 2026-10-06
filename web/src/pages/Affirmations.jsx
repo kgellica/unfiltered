@@ -163,7 +163,6 @@ export default function Affirmations() {
           </div>
         </div>
 
-        {/* Favorites & Custom Affirmations in a Grid */}
         {(favorites.length > 0 || customAffirmations.length > 0) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Favorites */}
@@ -177,7 +176,7 @@ export default function Affirmations() {
               >
                 <h3 className="text-sm font-bold flex items-center gap-2 mb-4" style={{ color: 'var(--ink-soft)' }}>
                   <Heart size={14} className="text-[var(--accent)] fill-current" />
-                  <span>favorites ({favorites.length})</span>
+                  <span>favorites</span>
                 </h3>
 
                 <div className="flex flex-col gap-3">
@@ -215,7 +214,7 @@ export default function Affirmations() {
               >
                 <h3 className="text-sm font-bold flex items-center gap-2 mb-4" style={{ color: 'var(--ink-soft)' }}>
                   <Plus size={14} className="text-[var(--accent)]" />
-                  <span>custom ({customAffirmations.length})</span>
+                  <span>custom</span>
                 </h3>
 
                 <div className="flex flex-col gap-3">
