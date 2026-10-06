@@ -35,6 +35,56 @@ export default function Settings() {
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwErrors, setPwErrors] = useState({});
 
+  const validatePassword = (pw) => {
+    const errs = [];
+    if (pw.length < 8) errs.push('8+ characters');
+    if (!/[A-Z]/.test(pw)) errs.push('1 uppercase letter');
+    if (!/[0-9]/.test(pw)) errs.push('1 number');
+    return errs;
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwSuccess(false);
+
+    const formatErrors = validatePassword(newPw);
+    const nextErrors = {};
+    if (!currentPw) nextErrors.current_password = 'enter your current password.';
+    if (formatErrors.length > 0) nextErrors.password = `password needs: ${formatErrors.join(', ')}.`;
+    if (newPw !== confirmPw) nextErrors.confirm = "passwords don't match.";
+
+    if (Object.keys(nextErrors).length > 0) {
+      setPwErrors(nextErrors);
+      return;
+    }
+
+    setPwLoading(true);
+    setPwErrors({});
+    try {
+      await api.patch('/user/password', {
+        current_password: currentPw,
+        password: newPw,
+        password_confirmation: confirmPw,
+      });
+      setPwSuccess(true);
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+    } catch (err) {
+      const status = err?.response?.status;
+      const serverErrors = err?.response?.data?.errors;
+      if (status === 422 && serverErrors) {
+        const flat = {};
+        Object.entries(serverErrors).forEach(([key, msgs]) => { flat[key] = msgs[0]; });
+        setPwErrors(flat);
+      } else {
+        setPwErrors({ general: err?.response?.data?.message || 'failed to update password. try again.' });
+      }
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -346,11 +396,10 @@ export default function Settings() {
               <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setMode('light')}
-                  className={`py-4 px-4 rounded-2xl text-[13px] font-bold transition border-2 ${
-                    mode === 'light'
+                  className={`py-4 px-4 rounded-2xl text-[13px] font-bold transition border-2 ${mode === 'light'
                       ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
                       : 'border-[var(--border-soft)] bg-[var(--surface-muted)]'
-                  }`}
+                    }`}
                   style={{ color: 'var(--ink)' }}
                 >
                   <span className="block text-[11px] font-medium opacity-60">light</span>
@@ -358,11 +407,10 @@ export default function Settings() {
                 </button>
                 <button
                   onClick={() => setMode('dim')}
-                  className={`py-4 px-4 rounded-2xl text-[13px] font-bold transition border-2 ${
-                    mode === 'dim'
+                  className={`py-4 px-4 rounded-2xl text-[13px] font-bold transition border-2 ${mode === 'dim'
                       ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
                       : 'border-[var(--border-soft)] bg-[var(--surface-muted)]'
-                  }`}
+                    }`}
                   style={{ color: 'var(--ink)' }}
                 >
                   <span className="block text-[11px] font-medium opacity-60">dim</span>
@@ -370,11 +418,10 @@ export default function Settings() {
                 </button>
                 <button
                   onClick={() => setMode('dark')}
-                  className={`py-4 px-4 rounded-2xl text-[13px] font-bold transition border-2 ${
-                    mode === 'dark'
+                  className={`py-4 px-4 rounded-2xl text-[13px] font-bold transition border-2 ${mode === 'dark'
                       ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
                       : 'border-[var(--border-soft)] bg-[var(--surface-muted)]'
-                  }`}
+                    }`}
                   style={{ color: 'var(--ink)' }}
                 >
                   <span className="block text-[11px] font-medium opacity-60">dark</span>
@@ -393,11 +440,10 @@ export default function Settings() {
                   <button
                     key={p.id}
                     onClick={() => setAccent(p.id)}
-                    className={`w-12 h-12 rounded-full border-2 transition-all ${
-                      accent === p.id
+                    className={`w-12 h-12 rounded-full border-2 transition-all ${accent === p.id
                         ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)] scale-110'
                         : 'border-transparent hover:scale-105'
-                    }`}
+                      }`}
                     style={{ background: p.hex }}
                     title={p.label}
                   />
@@ -410,11 +456,10 @@ export default function Settings() {
                       setCustomAccent(e.target.value);
                       setAccent('custom');
                     }}
-                    className={`w-12 h-12 rounded-full cursor-pointer border-2 p-1 ${
-                      accent === 'custom'
+                    className={`w-12 h-12 rounded-full cursor-pointer border-2 p-1 ${accent === 'custom'
                         ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)] scale-110'
                         : 'border-transparent'
-                    }`}
+                      }`}
                     title="custom color"
                   />
                 </div>
@@ -447,7 +492,7 @@ export default function Settings() {
               customize your digital sanctuary.
             </p>
           </div>
-          
+
           <ProfileDropdown />
         </div>
 
@@ -468,11 +513,10 @@ export default function Settings() {
                 <button
                   key={page.id}
                   onClick={() => setActivePage(page.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-bold transition ${
-                    isActive
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-bold transition ${isActive
                       ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
                       : 'hover:bg-[var(--surface-muted)]'
-                  }`}
+                    }`}
                   style={{ color: isActive ? 'var(--accent)' : 'var(--ink-soft)' }}
                 >
                   <span className="flex items-center gap-2.5">
@@ -499,14 +543,14 @@ export default function Settings() {
         </div>
       </div>
 
-     <input
+      <input
         type="file"
         ref={avatarInputRef}
         className="hidden"
         accept="image/*"
         onChange={handleAvatarChange}
       />
-      
+
       {/* Logout Confirmation Modal */}
       <ConfirmModal
         isOpen={showLogoutConfirm}

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, FileText, CalendarCheck, ArrowLeft, Library } from 'lucide-react';
+import { FileText, CalendarCheck, ArrowLeft, Library, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useJournal } from '../hooks/useJournal';
 import EntryModal from '../components/EntryModal';
@@ -65,6 +65,10 @@ export default function Home() {
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
 
+  // Generate a list of available years (e.g. current year - 3 to current year + 1)
+  const currentYear = new Date().getFullYear();
+  const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - 3 + i);
+
   // Group entries by month
   const monthlyStats = useMemo(() => {
     const map = {};
@@ -126,19 +130,31 @@ export default function Home() {
           >
             {/* Bookshelf Title Bar */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookOpen size={20} style={{ color: 'var(--accent)' }} />
-                <h2
-                  className="text-xl font-bold tracking-tight text-[var(--ink)]"
-                  style={{ fontFamily: 'var(--font-display)' }}
-                >
-                  your {selectedYear} journal library
-                </h2>
-              </div>
+              <h2
+                className="text-xl font-bold tracking-tight text-[var(--ink)]"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                {selectedYear} library
+              </h2>
 
-              <span className="text-[12.5px] font-bold text-[var(--ink-soft)] bg-[var(--surface-muted)] px-3 py-1 rounded-full">
-                {entries.length} total reflections
-              </span>
+              {/* Year Selector Dropdown */}
+              <div className="relative flex items-center">
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="appearance-none bg-[var(--surface-muted)] text-[var(--ink)] text-[12.5px] font-bold px-3.5 py-1.5 pr-7 rounded-full border border-[var(--border-soft)] cursor-pointer focus:outline-none hover:opacity-85 transition-opacity"
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 pointer-events-none text-[var(--ink-soft)]"
+                />
+              </div>
             </div>
 
             {/* Bookshelf Graphic Row */}

@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import { Bookmark, Calendar, ArrowRight, Plus } from 'lucide-react';
+import { Bookmark, Calendar, ArrowRight, Plus, Mic } from 'lucide-react';
 import { useJournal } from '../hooks/useJournal';
 import EntryModal from '../components/EntryModal';
-import EntryCard from '../components/EntryCard';
 import StateMessage from '../components/StateMessage';
 import ProfileDropdown from '../components/ProfileDropdown';
-import { formatDiaryDate, formatShortDate, formatTime, MOOD_META, getReadableText } from '../lib/color';
+import MoodFace from '../components/MoodFace';
+import { formatShortDate, formatTime, MOOD_META, getReadableText } from '../lib/color';
 
 export default function Memories() {
   const {
@@ -35,6 +35,21 @@ export default function Memories() {
     return text.replace(/\s+/g, ' ').trim();
   }
 
+  // Card formatting parameters matching EntryCard
+  const hasCustomBg = Boolean(flashbackEntry?.bg_color || flashbackEntry?.color);
+  const cardColor = flashbackEntry?.bg_color || flashbackEntry?.color || '';
+  const bg = cardColor || 'var(--surface)';
+  const ink = hasCustomBg ? getReadableText(cardColor) : 'var(--ink)';
+  const softInk = hasCustomBg ? `${ink}bb` : 'var(--ink-soft)';
+  const mood = flashbackEntry ? MOOD_META[flashbackEntry.mood] || MOOD_META.good : MOOD_META.good;
+  const plainText = stripHtmlAndEntities(flashbackEntry?.content);
+  const photos = Array.isArray(flashbackEntry?.photo_path)
+    ? flashbackEntry.photo_path
+    : flashbackEntry?.photo_path
+    ? [flashbackEntry.photo_path]
+    : [];
+  const hasVoice = Boolean(flashbackEntry?.voice_path);
+
   return (
     <div
       className="min-h-screen px-4 sm:px-8 md:px-12 py-8 transition-colors duration-200 lowercase"
@@ -58,19 +73,19 @@ export default function Memories() {
           <ProfileDropdown />
         </div>
 
-        {/* Featured Memory Card */}
+        {/* Featured Memory Card (Expanded EntryCard Style) */}
         {flashbackEntry && (
           <div
-            className="rounded-3xl p-6 md:p-8 flex flex-col gap-4 shadow-sm relative overflow-hidden"
+            className="rounded-3xl p-6 md:p-8 flex flex-col gap-4 relative overflow-hidden transition-all duration-200"
             style={{
-              background: flashbackEntry.bg_color || flashbackEntry.color || 'var(--surface)',
-              border: '1.5px solid var(--border-soft)',
+              background: bg,
+              border: hasCustomBg ? '1px solid rgba(0,0,0,0.06)' : '1.5px solid var(--border-soft)',
               boxShadow: 'var(--card-shadow)',
             }}
           >
-            {/* Top Header: Date & Mood Badge */}
+            {/* Header Row: Date & Mood Badge */}
             <div className="flex items-center justify-between gap-2 w-full">
-              <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: 'var(--ink-soft)' }}>
+              <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: softInk }}>
                 <Calendar size={13} className="shrink-0 opacity-80" />
                 <span>{formatShortDate(flashbackEntry.entry_date)}</span>
                 {flashbackEntry.created_at && (
@@ -79,59 +94,92 @@ export default function Memories() {
               </div>
 
               <div
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold shadow-xs shrink-0 transition-transform hover:scale-105"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold shadow-xs shrink-0"
                 style={{
-                  background: 'var(--surface-muted)',
-                  color: 'var(--ink)',
+                  background: hasCustomBg ? 'rgba(255,255,255,0.45)' : 'var(--surface-muted)',
+                  color: ink,
                 }}
-                title={MOOD_META[flashbackEntry.mood]?.label || 'good'}
+                title={mood.label}
               >
-                <span>{MOOD_META[flashbackEntry.mood]?.emoji || '🌸'}</span>
-                <span className="text-[11px]">{MOOD_META[flashbackEntry.mood]?.label || 'good'}</span>
+                <MoodFace mood={flashbackEntry.mood || 'good'} size={14} color={ink} active={true} strokeWidth={1.8} />
+                <span className="text-[11px]">{mood.label}</span>
               </div>
             </div>
 
-            {/* Entry Title */}
+            {/* Title */}
             <h2
               className="text-xl md:text-2xl font-bold tracking-tight"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}
+              style={{ fontFamily: 'var(--font-display)', color: ink }}
             >
               {flashbackEntry.title || 'untitled reflection'}
             </h2>
 
-            {/* Body preview */}
-            <p className="text-[14px] font-medium leading-relaxed line-clamp-4 text-[var(--ink-soft)]">
-              {stripHtmlAndEntities(flashbackEntry.content) || 'no content written yet...'}
+            {/* Body */}
+            <p
+              className="text-[14px] font-medium leading-relaxed"
+              style={{ color: softInk }}
+            >
+              {plainText || 'no content written yet...'}
             </p>
 
-            {/* Bottom Row */}
-            <div className="flex items-center justify-between pt-2 border-t border-black/5 mt-1">
+            {/* Attachments Preview Row (Photos & Voice) */}
+            {(photos.length > 0 || hasVoice) && (
+              <div className="flex items-center gap-2">
+                {hasVoice && (
+                  <div
+                    className="flex items-center shrink-0"
+                    style={{ color: hasCustomBg ? ink : 'var(--accent)' }}
+                    title="audio note"
+                  >
+                    <Mic size={16} />
+                  </div>
+                )}
+
+                {photos.slice(0, 4).map((uri, i) => (
+                  <img
+                    key={i}
+                    src={uri}
+                    alt=""
+                    className="w-10 h-10 rounded-xl object-cover shrink-0"
+                    style={{ border: hasCustomBg ? '1px solid rgba(0,0,0,0.08)' : '1px solid var(--border-soft)' }}
+                  />
+                ))}
+                {photos.length > 4 && (
+                  <span className="text-[11px] font-bold opacity-70" style={{ color: softInk }}>
+                    +{photos.length - 4}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Bottom Footer Row */}
+            <div className="flex items-center justify-between pt-3 border-t border-black/5 mt-1">
               <div className="flex flex-wrap gap-1.5">
                 {(flashbackEntry.tags || []).length > 0 ? (
                   <>
-                    {(flashbackEntry.tags || []).slice(0, 3).map((t) => {
+                    {(flashbackEntry.tags || []).slice(0, 4).map((t) => {
                       const tagName = t.name || t;
                       return (
                         <span
                           key={tagName}
                           className="text-[11px] font-semibold px-2 py-0.5 rounded-lg"
                           style={{
-                            background: 'var(--accent-soft)',
-                            color: 'var(--accent)',
+                            background: hasCustomBg ? 'rgba(0,0,0,0.06)' : 'var(--accent-soft)',
+                            color: hasCustomBg ? ink : 'var(--accent)',
                           }}
                         >
                           #{tagName}
                         </span>
                       );
                     })}
-                    {(flashbackEntry.tags || []).length > 3 && (
-                      <span className="text-[10px] font-bold opacity-75" style={{ color: 'var(--ink-soft)' }}>
-                        +{flashbackEntry.tags.length - 3} more
+                    {(flashbackEntry.tags || []).length > 4 && (
+                      <span className="text-[10px] font-bold opacity-75" style={{ color: softInk }}>
+                        +{flashbackEntry.tags.length - 4} more
                       </span>
                     )}
                   </>
                 ) : (
-                  <span className="text-[11px] font-medium italic opacity-60" style={{ color: 'var(--ink-soft)' }}>
+                  <span className="text-[11px] font-medium italic opacity-60" style={{ color: softInk }}>
                     no tags
                   </span>
                 )}

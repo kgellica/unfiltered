@@ -11,6 +11,7 @@ import EntryModal from '../components/EntryModal';
 import EntryCard from '../components/EntryCard';
 import NewEntryButton from '../components/NewEntryButton';
 import ProfileDropdown from '../components/ProfileDropdown';
+import MoodFace from '../components/MoodFace';
 import { normalizeDateKey, MOOD_META, parseDiaryDate, formatDiaryDate } from '../lib/color';
 import StateMessage from '../components/StateMessage';
 
@@ -220,9 +221,15 @@ export default function CalendarView() {
                     </span>
 
                     {hasEntries && (
-                      <span className="text-sm select-none" title={moodMeta?.label}>
-                        {moodMeta?.emoji || '✨'}
-                      </span>
+                      <div title={moodMeta?.label || 'mood'}>
+                        <MoodFace
+                          mood={firstMood || 'good'}
+                          size={18}
+                          color="var(--ink)"
+                          active={true}
+                          strokeWidth={1.8}
+                        />
+                      </div>
                     )}
                   </div>
 

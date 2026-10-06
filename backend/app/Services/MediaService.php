@@ -43,7 +43,7 @@ class MediaService
     public function uploadVoice(UploadedFile $file, int|string $userId): string
     {
         $extension        = strtolower($file->getClientOriginalExtension());
-        $allowedExtensions = ['mp3', 'wav', 'aac', 'm4a', 'ogg'];
+        $allowedExtensions = ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'webm', 'mp4'];
 
         if (!in_array($extension, $allowedExtensions)) {
             throw new \InvalidArgumentException(

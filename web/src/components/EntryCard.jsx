@@ -1,5 +1,5 @@
 import { getReadableText, MOOD_META, formatShortDate, formatTime } from '../lib/color';
-import { Calendar, Tag as TagIcon, Sparkles } from 'lucide-react';
+import { Calendar, Tag as TagIcon, Sparkles, Mic } from 'lucide-react';
 import MoodFace from './MoodFace';
 
 function stripHtmlAndEntities(html = '') {
@@ -19,6 +19,7 @@ export default function EntryCard({ entry, onOpen }) {
   const plainText = stripHtmlAndEntities(entry.content);
   const formattedDate = formatShortDate(entry.entry_date);
   const photos = Array.isArray(entry.photo_path) ? entry.photo_path : entry.photo_path ? [entry.photo_path] : [];
+  const hasVoice = Boolean(entry.voice_path);
 
   return (
     <button
@@ -59,15 +60,28 @@ export default function EntryCard({ entry, onOpen }) {
         {entry.title || 'untitled reflection'}
       </h3>
 
-            <p
+      <p
         className="text-[13.5px] leading-relaxed line-clamp-3 font-medium flex-1"
         style={{ color: softInk }}
       >
         {plainText || 'no content written yet...'}
       </p>
 
-      {photos.length > 0 && (
-        <div className="flex items-center gap-1.5">
+      {/* Attachments Preview Row (Photos & Voice) */}
+      {(photos.length > 0 || hasVoice) && (
+        <div className="flex items-center gap-2">
+          {hasVoice && (
+            <div
+              className="flex items-center shrink-0"
+              style={{
+                color: hasCustomBg ? ink : 'var(--accent)',
+              }}
+              title="Audio note"
+            >
+              <Mic size={16} />
+            </div>
+          )}
+
           {photos.slice(0, 3).map((uri, i) => (
             <img
               key={i}

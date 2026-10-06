@@ -12,7 +12,10 @@ import {
   ImagePlus,
   Loader2,
   Sparkles,
-  Bot
+  Bot,
+  Mic,
+  Play,
+  Pause
 } from 'lucide-react';
 import { CARD_COLORS, MOOD_META, getReadableText, formatDiaryDate, formatTime, normalizeDateKey } from '../lib/color';
 import ConfirmModal from './ConfirmModal';
@@ -44,7 +47,108 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
     if (Array.isArray(entry.photo_path)) return entry.photo_path;
     return [entry.photo_path];
   });
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const [voiceUri, setVoiceUri] = useState(entry?.voice_path || null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [uploadingVoice, setUploadingVoice] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const audioElRef = useRef(null);
+  const MAX_VOICE_SECONDS = 600; // 10 minutes, same cap as mobile
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+        .find((t) => MediaRecorder.isTypeSupported(t)) || '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blobType = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: blobType });
+        const extension = blobType.includes('mp4') ? 'mp4' : 'webm';
+        const file = new File([blob], `voice-note.${extension}`, { type: blobType });
+
+        setUploadingVoice(true);
+        try {
+          const url = await uploadFile(file, 'voice');
+          setVoiceUri(url);
+        } catch (err) {
+          alert(err.message || 'failed to upload voice recording.');
+        } finally {
+          setUploadingVoice(false);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          if (prev >= MAX_VOICE_SECONDS) {
+            stopRecording();
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch (err) {
+      alert('microphone access is required to record a voice journal.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  };
+
+  const removeVoice = () => {
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setVoiceUri(null);
+  };
+
+  const toggleVoicePlayback = () => {
+    if (!audioElRef.current) return;
+    if (isPlaying) audioElRef.current.pause();
+    else audioElRef.current.play();
+  };
+
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Stop any in-progress recording if the modal unmounts mid-recording
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   // AI insight panel state
   const [insightOpen, setInsightOpen] = useState(false);
@@ -210,7 +314,8 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
       bg_color: color || '#FFFFFF',
       color: color || '',
       tags: tagList,
-      photo_path: photoUris.length > 0 ? photoUris : null,
+            photo_path: photoUris.length > 0 ? photoUris : null,
+      voice_path: voiceUri || null,
     });
     setEditing(false);
   };
@@ -538,6 +643,105 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
                 </div>
                 <span className="text-[11.5px] font-bold">photo</span>
               </button>
+            </div>
+
+                        {/* Voice */}
+            <div className="relative" ref={activePopup === 'voice' ? popupRef : null}>
+              <button
+                type="button"
+                onClick={() => togglePopup('voice')}
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${activePopup === 'voice' ? 'bg-[var(--accent-soft)] scale-105' : 'hover:bg-black/5'
+                  }`}
+                style={{ color: ink }}
+              >
+                <div className="relative">
+                  {isRecording ? (
+                    <span className="block w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                  ) : (
+                    <Mic size={20} />
+                  )}
+                  {voiceUri && !isRecording && (
+                    <span
+                      className="absolute -top-1 -right-2 w-4 h-4 rounded-full flex items-center justify-center"
+                      style={{ background: 'var(--accent)' }}
+                    >
+                      <Check size={10} strokeWidth={3} className="text-white" />
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11.5px] font-bold">voice</span>
+              </button>
+
+              {activePopup === 'voice' && (
+                <div
+                  className="absolute bottom-full mb-3 left-0 sm:left-2 w-[260px] rounded-3xl p-4 shadow-2xl animate-cute-pop z-50"
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1.5px solid var(--border-soft)',
+                    boxShadow: 'var(--modal-shadow)',
+                  }}
+                >
+                  {uploadingVoice && (
+                    <div className="flex items-center gap-2 mb-2 text-[12px]" style={{ color: 'var(--ink-soft)' }}>
+                      <Loader2 size={13} className="animate-spin" /> uploading voice...
+                    </div>
+                  )}
+
+                  {!isRecording && !voiceUri && !uploadingVoice && (
+                    <button
+                      type="button"
+                      onClick={startRecording}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-[13px]"
+                      style={{ background: 'var(--surface-muted)', color: 'var(--ink)' }}
+                    >
+                      <Mic size={16} /> start recording
+                    </button>
+                  )}
+
+                  {isRecording && (
+                    <button
+                      type="button"
+                      onClick={stopRecording}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-[13px] text-white"
+                      style={{ background: '#ef4444' }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                      {formatDuration(recordingSeconds)} / 10:00
+                    </button>
+                  )}
+
+                  {voiceUri && !isRecording && !uploadingVoice && (
+                    <div className="flex items-center gap-2">
+                      <audio
+                        ref={audioElRef}
+                        src={voiceUri}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onEnded={() => setIsPlaying(false)}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={toggleVoicePlayback}
+                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                        style={{ background: 'var(--accent)' }}
+                      >
+                        {isPlaying ? (
+                          <Pause size={15} fill="white" stroke="none" />
+                        ) : (
+                          <Play size={15} fill="white" stroke="none" className="ml-0.5" />
+                        )}
+                      </button>
+                      <span className="text-[12.5px] font-medium flex-1" style={{ color: 'var(--ink)' }}>
+                        voice note
+                      </span>
+                      <button type="button" onClick={removeVoice} aria-label="delete voice recording">
+                        <Trash2 size={15} style={{ color: '#ef4444' }} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Color */}
