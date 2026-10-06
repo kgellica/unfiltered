@@ -2,64 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../api/axios';
-import { Eye, EyeOff, Lock, Mail, User as UserIcon, X } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, X } from 'lucide-react';
 import logoImg from '../assets/logo.png';
-
-// Password Security Validation Rules
-const passwordRules = (password = '') => [
-  { label: '8+ chars', valid: password.length >= 8 },
-  { label: 'Uppercase', valid: /[A-Z]/.test(password) },
-  { label: 'Lowercase', valid: /[a-z]/.test(password) },
-  { label: 'Number', valid: /\d/.test(password) },
-  { label: 'Symbol', valid: /[@$!%*?&#^()_\-+=]/.test(password) },
-];
-
-const validatePassword = (password) => {
-  if (!password) return 'Password is required.';
-  const rules = passwordRules(password);
-  const failed = rules.find((r) => !r.valid);
-  return failed ? `Password requires: ${failed.label.toLowerCase()}` : null;
-};
-
-// Reusable Password Strength Progress Bar Component
-const PasswordStrengthBar = ({ password = '' }) => {
-  const rules = passwordRules(password);
-  const passedCount = rules.filter((r) => r.valid).length;
-  const percentage = (passedCount / rules.length) * 100;
-
-  // Dynamic progress bar colors based on strength level
-  const getProgressColor = () => {
-    if (passedCount <= 1) return 'bg-red-500';
-    if (passedCount <= 3) return 'bg-amber-500';
-    if (passedCount === 4) return 'bg-yellow-400';
-    return 'bg-emerald-500';
-  };
-
-  return (
-    <div className="mt-2 space-y-1.5">
-      {/* Outer track */}
-      <div className="w-full h-1.5 bg-[var(--surface-muted)] border border-[var(--border-soft)] rounded-full overflow-hidden">
-        {/* Animated filling bar */}
-        <div
-          className={`h-full transition-all duration-300 ease-out ${getProgressColor()}`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-
-      {/* Requirement status text */}
-      <div className="flex justify-between items-center text-[11px] font-medium text-[var(--ink-soft)] px-0.5">
-        <span>
-          {passedCount === 0 && 'Enter password'}
-          {passedCount > 0 && passedCount < 5 && `${passedCount}/5 requirements met`}
-          {passedCount === 5 && '✓ Strong password!'}
-        </span>
-        <span className="opacity-75">
-          {rules.filter((r) => !r.valid).map((r) => r.label).join(' • ')}
-        </span>
-      </div>
-    </div>
-  );
-};
+import PasswordInput from './PasswordInput';
+import PasswordStrengthBar from './PasswordStrengthBar';
+import { validatePassword } from '../lib/password';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -89,12 +36,6 @@ export default function Auth() {
   const [forgotError, setForgotError] = useState(null);
   const [forgotSuccess, setForgotSuccess] = useState(null);
 
-  // Visibility toggle states
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showForgotConfirmPassword, setShowForgotConfirmPassword] = useState(false);
-
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -113,9 +54,9 @@ export default function Auth() {
     setForgotError(null);
     setForgotSuccess(null);
 
-    const passwordValidationError = validatePassword(forgotData.password);
-    if (passwordValidationError) {
-      setForgotError(passwordValidationError);
+    const unmetRules = validatePassword(forgotData.password);
+    if (unmetRules.length > 0) {
+      setForgotError(`password requires: ${unmetRules[0]}`);
       return;
     }
 
@@ -169,9 +110,9 @@ export default function Auth() {
     setLoading(true);
 
     if (!isLogin) {
-      const passwordValidationError = validatePassword(formData.password);
-      if (passwordValidationError) {
-        setError(passwordValidationError);
+      const unmetRules = validatePassword(formData.password);
+      if (unmetRules.length > 0) {
+        setError(`password requires: ${unmetRules[0]}`);
         setLoading(false);
         return;
       }
@@ -285,71 +226,31 @@ export default function Auth() {
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-                  <Lock size={13} /> new password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showForgotPassword ? 'text' : 'password'}
-                    name="password"
-                    required
-                    autoComplete="new-password"
-                    value={forgotData.password}
-                    onChange={handleForgotChange}
-                    className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                    style={{
-                      background: 'var(--surface-muted)',
-                      borderColor: 'var(--border-soft)',
-                      color: 'var(--ink)',
-                    }}
-                    placeholder="Enter new password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotPassword(!showForgotPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-                    aria-label={showForgotPassword ? 'Hide Password' : 'Show Password'}
-                  >
-                    {showForgotPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-
-                {/* Loading Line / Progress Bar Effect */}
+                <PasswordInput
+                  label="new password"
+                  icon={Lock}
+                  name="password"
+                  required
+                  autoComplete="new-password"
+                  value={forgotData.password}
+                  onChange={handleForgotChange}
+                  placeholder="Enter new password"
+                />
                 {forgotData.password.length > 0 && (
                   <PasswordStrengthBar password={forgotData.password} />
                 )}
               </div>
 
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-                  <Lock size={13} /> confirm new password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showForgotConfirmPassword ? 'text' : 'password'}
-                    name="password_confirmation"
-                    required
-                    autoComplete="new-password"
-                    value={forgotData.password_confirmation}
-                    onChange={handleForgotChange}
-                    className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                    style={{
-                      background: 'var(--surface-muted)',
-                      borderColor: 'var(--border-soft)',
-                      color: 'var(--ink)',
-                    }}
-                    placeholder="Re-enter new password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-                    aria-label={showForgotConfirmPassword ? 'Hide Confirm Password' : 'Show Confirm Password'}
-                  >
-                    {showForgotConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
+              <PasswordInput
+                label="confirm new password"
+                icon={Lock}
+                name="password_confirmation"
+                required
+                autoComplete="new-password"
+                value={forgotData.password_confirmation}
+                onChange={handleForgotChange}
+                placeholder="Re-enter new password"
+              />
 
               <button
                 type="submit"
@@ -447,36 +348,17 @@ export default function Auth() {
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-                  <Lock size={13} /> Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    required
-                    autoComplete={isLogin ? 'current-password' : 'new-password'}
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                    style={{
-                      background: 'var(--surface-muted)',
-                      borderColor: 'var(--border-soft)',
-                      color: 'var(--ink)',
-                    }}
-                    placeholder={isLogin ? '••••••••' : 'Enter password'}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-                    aria-label={showPassword ? 'Hide Password' : 'Show Password'}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
+                <PasswordInput
+                  label="Password"
+                  icon={Lock}
+                  name="password"
+                  required
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder={isLogin ? '••••••••' : 'Enter password'}
+                />
 
-                {/* Loading Line / Progress Bar Effect for Registration */}
                 {!isLogin && formData.password.length > 0 && (
                   <PasswordStrengthBar password={formData.password} />
                 )}
@@ -508,36 +390,16 @@ export default function Auth() {
               </div>
 
               {!isLogin && (
-                <div>
-                  <label className="block text-[12px] font-bold text-[var(--ink-soft)] mb-1.5 flex items-center gap-1">
-                    <Lock size={13} /> Confirm Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      name="password_confirmation"
-                      required
-                      autoComplete="new-password"
-                      value={formData.password_confirmation}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 pr-11 rounded-2xl border text-[14px] font-medium outline-none transition focus:border-[var(--accent)]"
-                      style={{
-                        background: 'var(--surface-muted)',
-                        borderColor: 'var(--border-soft)',
-                        color: 'var(--ink)',
-                      }}
-                      placeholder="Re-enter password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] hover:text-[var(--accent)] transition"
-                      aria-label={showConfirmPassword ? 'Hide Confirm Password' : 'Show Confirm Password'}
-                    >
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
+                <PasswordInput
+                  label="Confirm Password"
+                  icon={Lock}
+                  name="password_confirmation"
+                  required
+                  autoComplete="new-password"
+                  value={formData.password_confirmation}
+                  onChange={handleChange}
+                  placeholder="Re-enter password"
+                />
               )}
 
               {!isLogin && (
