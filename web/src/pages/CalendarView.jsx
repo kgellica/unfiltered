@@ -1,22 +1,11 @@
 import { useMemo, useState } from 'react';
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  BookOpen,
-} from 'lucide-react';
 import { useJournal } from '../hooks/useJournal';
 import EntryModal from '../components/EntryModal';
-import EntryCard from '../components/EntryCard';
-import NewEntryButton from '../components/NewEntryButton';
 import ProfileDropdown from '../components/ProfileDropdown';
-import MoodFace from '../components/MoodFace';
-import { normalizeDateKey, MOOD_META, parseDiaryDate, formatDiaryDate } from '../lib/color';
-import StateMessage from '../components/StateMessage';
-
-
-const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+import CalendarHeader from '../components/calendar/CalendarHeader';
+import CalendarGrid from '../components/calendar/CalendarGrid';
+import SelectedDayEntries from '../components/calendar/SelectedDayEntries';
+import { normalizeDateKey } from '../lib/color';
 
 export default function CalendarView() {
   const {
@@ -27,7 +16,6 @@ export default function CalendarView() {
     showModal,
     setActiveEntry,
     setShowModal,
-    fetchData,
     openEntry,
     closeModal,
     handleSave,
@@ -110,7 +98,7 @@ export default function CalendarView() {
       style={{ background: 'var(--bg-page)' }}
     >
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
-        {/* Header with Profile Dropdown */}
+        {/* Header */}
         <div className="flex items-start justify-between">
           <div>
             <h1
@@ -123,7 +111,7 @@ export default function CalendarView() {
               browse your thoughts by day and visualize your monthly mood patterns.
             </p>
           </div>
-          
+
           <ProfileDropdown />
         </div>
 
@@ -136,150 +124,29 @@ export default function CalendarView() {
             boxShadow: 'var(--card-shadow)',
           }}
         >
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between">
-            <h2
-              className="text-xl font-bold tracking-tight text-[var(--ink)]"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {monthName}
-            </h2>
+          <CalendarHeader
+            monthName={monthName}
+            onPrev={prevMonth}
+            onNext={nextMonth}
+            onToday={() => setCurrentDate(new Date())}
+          />
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={prevMonth}
-                className="p-2 rounded-2xl bg-[var(--surface-muted)] hover:bg-black/5 transition text-[var(--ink)] cursor-pointer"
-                title="previous month"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                onClick={() => setCurrentDate(new Date())}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[var(--accent-soft)] text-[var(--accent)] hover:opacity-85 transition cursor-pointer"
-              >
-                today
-              </button>
-              <button
-                onClick={nextMonth}
-                className="p-2 rounded-2xl bg-[var(--surface-muted)] hover:bg-black/5 transition text-[var(--ink)] cursor-pointer"
-                title="next month"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Weekday Column Headers */}
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-[var(--ink-soft)] pb-2 border-b border-[var(--border-soft)]">
-            {WEEKDAYS.map((w) => (
-              <span key={w} className="uppercase tracking-wider">
-                {w}
-              </span>
-            ))}
-          </div>
-
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-2">
-            {calendarCells.map((cell, idx) => {
-              if (cell.type === 'empty') {
-                return <div key={cell.key} className="h-20 sm:h-24 rounded-2xl opacity-0" />;
-              }
-
-              const isToday = cell.dateKey === todayKey;
-              const isSelected = cell.dateKey === selectedDayKey;
-              const hasEntries = cell.entries.length > 0;
-              const firstMood = hasEntries ? cell.entries[0].mood : null;
-              const moodMeta = firstMood ? MOOD_META[firstMood] : null;
-
-              return (
-                <button
-                  key={cell.dateKey}
-                  type="button"
-                  onClick={() => setSelectedDayKey(cell.dateKey)}
-                  className={`h-20 sm:h-24 p-2 rounded-2xl border transition-all text-left flex flex-col justify-between cursor-pointer group relative ${
-                    isSelected
-                      ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)] shadow-sm'
-                      : isToday
-                      ? 'border-[var(--accent)]'
-                      : 'border-[var(--border-soft)] hover:border-black/20'
-                  }`}
-                  style={{
-                    background: hasEntries ? 'var(--surface-muted)' : 'var(--surface)',
-                  }}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span
-                      className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
-                        isToday
-                          ? 'bg-[var(--accent)] text-white'
-                          : isSelected
-                          ? 'text-[var(--accent)] font-extrabold'
-                          : 'text-[var(--ink)]'
-                      }`}
-                    >
-                      {cell.day}
-                    </span>
-
-                    {hasEntries && (
-                      <div title={moodMeta?.label || 'mood'}>
-                        <MoodFace
-                          mood={firstMood || 'good'}
-                          size={18}
-                          color="var(--ink)"
-                          active={true}
-                          strokeWidth={1.8}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {hasEntries ? (
-                    <span className="text-[10px] font-bold text-[var(--accent)] truncate block">
-                      {cell.entries.length} {cell.entries.length === 1 ? 'entry' : 'entries'}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-transparent group-hover:text-[var(--ink-faint)] transition-colors">
-                      + add
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <CalendarGrid
+            calendarCells={calendarCells}
+            selectedDayKey={selectedDayKey}
+            todayKey={todayKey}
+            onSelectDay={setSelectedDayKey}
+          />
         </div>
 
         {/* Selected Date Entries Section */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3
-              className="text-lg font-bold text-[var(--ink)] flex items-center gap-2"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              <span>reflections for today</span>
-            </h3>
-          </div>
-
-          {loading ? (
-            <StateMessage type="loading" variant="calendar" />
-          ) : selectedDayEntries.length === 0 ? (
-            <StateMessage
-              variant="calendar"
-              title={`no entries`}
-              description="take a moment to reflect and write something"
-              actionLabel="+ write entry"
-              onAction={() => openNewForDate(selectedDayKey)}
-            />
-          ) : (
-            <div
-              className="grid gap-4 sm:gap-5"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}
-            >
-              {selectedDayEntries.map((entry) => (
-                <EntryCard key={entry.id} entry={entry} onOpen={openEntry} />
-              ))}
-            </div>
-          )}
-        </div>
+        <SelectedDayEntries
+          loading={loading}
+          selectedDayEntries={selectedDayEntries}
+          selectedDayKey={selectedDayKey}
+          onOpenEntry={openEntry}
+          onOpenNewForDate={openNewForDate}
+        />
       </div>
 
       {showModal && (
