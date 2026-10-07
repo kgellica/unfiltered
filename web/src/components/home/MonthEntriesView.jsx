@@ -48,10 +48,7 @@ export default function MonthEntriesView({
             <span className="text-[10px] font-bold text-[var(--ink-faint)] uppercase block">
               entries
             </span>
-            <span
-              className="text-lg font-bold text-[var(--ink)]"
-              style={{ fontFamily: 'var(--font-mono-diary)' }}
-            >
+            <span className="text-lg font-bold text-[var(--ink)]">
               {currentMonthData.count}
             </span>
           </div>
@@ -60,10 +57,7 @@ export default function MonthEntriesView({
             <span className="text-[10px] font-bold text-[var(--ink-faint)] uppercase block">
               days
             </span>
-            <span
-              className="text-lg font-bold text-[var(--ink)]"
-              style={{ fontFamily: 'var(--font-mono-diary)' }}
-            >
+            <span className="text-lg font-bold text-[var(--ink)]">
               {currentMonthData.activeDays.size}/{currentMonthMeta.days}
             </span>
           </div>

@@ -2,20 +2,20 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home,
-  BookHeart,
+  BookOpen,
   CalendarDays,
-  Sparkles,
+  Images,
+  Quote,
   Settings,
-  Bookmark,
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
 const NAV_ITEMS = [
   { to: '/home', label: 'home', icon: Home },
-  { to: '/journal', label: 'journal', icon: BookHeart },
-  { to: '/memories', label: 'memories', icon: Bookmark },
+  { to: '/journal', label: 'journal', icon: BookOpen },
   { to: '/calendar', label: 'calendar', icon: CalendarDays },
-  { to: '/affirmations', label: 'affirmations', icon: Sparkles },
+  { to: '/memories', label: 'memories', icon: Images },
+  { to: '/affirmations', label: 'affirmations', icon: Quote },
   { to: '/settings', label: 'settings', icon: Settings },
 ];
 
