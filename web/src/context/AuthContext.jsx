@@ -7,9 +7,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is logged in on initial page load. Token may live in
-  // localStorage (remembered sessions) or sessionStorage (this-tab-only
-  // sessions from an unchecked "Remember me").
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');

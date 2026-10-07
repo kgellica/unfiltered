@@ -57,7 +57,7 @@ export default function EntryCard({ entry, onOpen }) {
         className="text-[17px] font-bold tracking-tight line-clamp-1 group-hover:text-[var(--accent)] transition-colors"
         style={{ fontFamily: 'var(--font-display)', color: ink }}
       >
-        {entry.title || 'untitled reflection'}
+        {entry.title || ''}
       </h3>
 
       <p

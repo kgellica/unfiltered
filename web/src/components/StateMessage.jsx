@@ -1,14 +1,13 @@
 // components/StateMessage.jsx
 export default function StateMessage({
-  type = 'empty', // 'empty' | 'loading' | 'error'
-  variant = 'default', // 'journal' | 'calendar' | 'memories' | 'default'
+  type = 'empty', 
+  variant = 'default', 
   title,
   description,
   actionLabel,
   onAction,
   className = '',
 }) {
-  // Default messages based on type
   const getDefaultContent = () => {
     if (type === 'loading') {
       return {
@@ -24,7 +23,6 @@ export default function StateMessage({
       };
     }
 
-    // Empty state
     const emptyMessages = {
       journal: {
         title: 'no entries yet',

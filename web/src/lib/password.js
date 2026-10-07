@@ -1,7 +1,3 @@
-// Single source of truth for password rules — Auth (register/forgot) and
-// Settings (change password) both score against these same functions, even
-// though each screen displays a different subset/visual style.
-
 export const hasMinLength = (pw = '', min = 8) => pw.length >= min;
 export const hasUppercase = (pw = '') => /[A-Z]/.test(pw);
 export const hasLowercase = (pw = '') => /[a-z]/.test(pw);
@@ -18,8 +14,6 @@ export const PASSWORD_RULE_DEFS = {
 
 export const ALL_PASSWORD_RULE_KEYS = Object.keys(PASSWORD_RULE_DEFS);
 
-// Scores a password against a chosen subset of rules (defaults to all 5).
-// Settings only cares about 3 of these — pass `['length', 'upper', 'number']`.
 export function getPasswordChecks(password = '', ruleKeys = ALL_PASSWORD_RULE_KEYS) {
   const checks = ruleKeys.map((key) => {
     const rule = PASSWORD_RULE_DEFS[key];
@@ -29,7 +23,6 @@ export function getPasswordChecks(password = '', ruleKeys = ALL_PASSWORD_RULE_KE
   return { checks, passedCount, total: checks.length };
 }
 
-// Returns unmet rule labels, e.g. ['8+ chars', '1 number'] — empty = valid.
 export function validatePassword(password, ruleKeys = ALL_PASSWORD_RULE_KEYS) {
   if (!password) return ['password is required'];
   return getPasswordChecks(password, ruleKeys).checks

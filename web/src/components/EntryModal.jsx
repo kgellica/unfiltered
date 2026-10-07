@@ -197,7 +197,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
             />
           ) : (
             <h2 className="text-xl md:text-2xl font-bold tracking-tight mb-3" style={{ fontFamily: 'var(--font-display)', color: ink }}>
-              {title || 'untitled reflection'}
+              {title || ''}
             </h2>
           )}
 

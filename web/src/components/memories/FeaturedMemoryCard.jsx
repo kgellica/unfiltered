@@ -63,7 +63,7 @@ export default function FeaturedMemoryCard({ flashbackEntry, onOpenEntry }) {
         className="text-xl md:text-2xl font-bold tracking-tight"
         style={{ fontFamily: 'var(--font-display)', color: ink }}
       >
-        {flashbackEntry.title || 'untitled reflection'}
+        {flashbackEntry.title || ''}
       </h2>
 
       {/* Body */}

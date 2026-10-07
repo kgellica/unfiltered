@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { uploadFile } from '../api/uploads';
 
-const MAX_VOICE_SECONDS = 600; // 10 minutes
+const MAX_VOICE_SECONDS = 600; 
 
-// Browser mic recording via MediaRecorder — records, uploads on stop, and
-// exposes playback controls for whatever <audio> element the caller mounts.
 export function useVoiceRecorder(initialVoiceUri = null) {
   const [voiceUri, setVoiceUri] = useState(initialVoiceUri);
   const [isRecording, setIsRecording] = useState(false);
@@ -90,7 +88,6 @@ export function useVoiceRecorder(initialVoiceUri = null) {
     else audioElRef.current.play();
   };
 
-  // Stop any in-progress recording if the component unmounts mid-recording
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);

@@ -4,7 +4,7 @@ import { normalizeDateKey } from '../lib/color';
 const DAY_LABELS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 function getWeekDates(reference = new Date()) {
-  const day = (reference.getDay() + 6) % 7; // 0 = Monday
+  const day = (reference.getDay() + 6) % 7;
   const monday = new Date(reference);
   monday.setDate(reference.getDate() - day);
   return Array.from({ length: 7 }, (_, i) => {
@@ -24,18 +24,17 @@ function toLocalKey(d) {
 export default function StreakTrail({ streak = 0, entryDates = [] }) {
   const week = getWeekDates();
   const todayKey = toLocalKey(new Date());
-  
-  // Normalize all incoming entry dates into clean YYYY-MM-DD
+
   const filledSet = new Set(entryDates.map(normalizeDateKey).filter(Boolean));
 
   const getStreakMessage = (s) => {
     if (s === 0) return 'start your story today • one day at a time';
     if (s === 1) return 'first step taken! come back tomorrow';
     if (s < 5) return 'you are doing wonderful! streak is glowing';
-    return 'unstoppable habit champion! keep it up';
+    return 'unstoppable habit champion, keep it up!';
   };
 
- return (
+  return (
     <div
       className="w-full rounded-3xl p-5 md:p-6 transition-all shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-5 lowercase"
       style={{
@@ -47,29 +46,28 @@ export default function StreakTrail({ streak = 0, entryDates = [] }) {
       {/* Left Streak Details */}
       <div className="flex items-center gap-3.5 flex-1">
         <Flame
-          size={34}
+          size={60}
           style={{
             color: streak > 0 ? 'var(--accent)' : 'var(--ink-faint)',
           }}
-          className={`shrink-0 transition-transform ${
-            streak > 0 ? 'fill-current animate-cute-float' : 'opacity-60'
-          }`}
+          className={`shrink-0 transition-all ${streak > 0 ? 'fill-current' : 'opacity-60'
+            }`}
         />
 
         <div className="flex flex-col">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center gap-2">
             <span
               className="text-3xl font-extrabold tracking-tight"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)' }}
             >
               {streak}
             </span>
-            <span
+            {/* <span
               className="text-base font-bold"
               style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)' }}
             >
               {streak === 1 ? 'day streak' : 'days streak'}
-            </span>
+            </span> */}
           </div>
           <span
             className="text-[12.5px] font-medium mt-0.5"
@@ -80,7 +78,7 @@ export default function StreakTrail({ streak = 0, entryDates = [] }) {
         </div>
       </div>
 
-      {/* Right Weekly Trail Dots (Container Styles Removed) */}
+      {/* Right Weekly Trail Dots */}
       <div className="flex items-center justify-between md:justify-end gap-2.5 sm:gap-3.5">
         {week.map((d, i) => {
           const key = toLocalKey(d);
@@ -100,11 +98,10 @@ export default function StreakTrail({ streak = 0, entryDates = [] }) {
               </span>
 
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  isFilled
-                    ? 'shadow-sm text-white animate-cute-pop'
-                    : 'text-[var(--ink-faint)]'
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isFilled
+                  ? 'shadow-sm text-white animate-cute-pop'
+                  : 'text-[var(--ink-faint)]'
+                  }`}
                 style={{
                   background: isFilled ? 'var(--accent)' : 'var(--surface-muted)',
                   border: isFilled

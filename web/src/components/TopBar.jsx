@@ -3,15 +3,7 @@ import { Search, Calendar, Tag, ChevronDown, X, Sparkles, CalendarDays } from 'l
 import { formatDiaryDate } from '../lib/color';
 
 export default function TopBar({
-  query,
-  onQueryChange,
-  date,
-  onDateChange,
-  tags,
-  selectedTag,
-  onTagChange,
-  user,
-  totalEntries = 0,
+  query, onQueryChange, date, onDateChange, tags, selectedTag, onTagChange, user, totalEntries = 0,
 }) {
   const [tagOpen, setTagOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
@@ -68,7 +60,7 @@ export default function TopBar({
         <input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={`search in ${totalEntries} ${totalEntries === 1 ? 'entry' : 'entries'}`} // 2. Update placeholder string
+          placeholder={`search in ${totalEntries} ${totalEntries === 1 ? 'entry' : 'entries'}`} 
           className="bg-transparent outline-none text-[13.5px] font-medium flex-1 lowercase placeholder:text-[var(--ink-faint)]"
           style={{ color: 'var(--ink)' }}
         />
@@ -211,7 +203,7 @@ export default function TopBar({
                 : 'text-[var(--ink-soft)] hover:bg-[var(--surface-muted)]'
                 }`}
             >
-              #all tags
+              all tags
             </button>
 
             {tags.length === 0 ? (
@@ -232,7 +224,7 @@ export default function TopBar({
                       : 'text-[var(--ink)] hover:bg-[var(--surface-muted)]'
                       }`}
                   >
-                    <span>#{t}</span>
+                    <span>{t}</span>
                     {selectedTag === t && <Sparkles size={13} />}
                   </button>
                 ))}
@@ -245,15 +237,18 @@ export default function TopBar({
       {/* Clear All Filters Button */}
       {(query || date || selectedTag) && (
         <button
+          type="button"
           onClick={() => {
             onQueryChange('');
             onDateChange('');
             onTagChange('');
           }}
-          className="h-11 px-4 rounded-2xl text-[13px] font-bold transition-all shrink-0 hover:bg-black/5"
+          className="h-11 w-11 flex items-center justify-center rounded-2xl transition-all shrink-0 hover:bg-black/5 cursor-pointer"
           style={{ color: 'var(--ink)' }}
+          title="clear all filters"
+          aria-label="clear all filters"
         >
-          clear all
+          <X size={18} />
         </button>
       )}
     </div>

@@ -8,7 +8,6 @@ export const CARD_COLORS = [
   { hex: '#f7eee7', name: 'cozy cinnamon', bg: '#f7eee7' },
 ];
 
-// Simple luminance check so text stays readable against any custom card color.
 export function getReadableText(hex) {
   if (!hex) return 'var(--ink)';
   const c = hex.replace('#', '');
@@ -28,9 +27,6 @@ export const MOOD_META = {
   sad: { label: 'sad', emoji: '🧸', color: 'var(--mood-sad)', text: 'feeling down 🧸' },
 };
 
-/**
- * Normalizes any date format into YYYY-MM-DD key reliably.
- */
 export function normalizeDateKey(val) {
   if (!val) return '';
   if (val instanceof Date) {
@@ -47,9 +43,6 @@ export function normalizeDateKey(val) {
   return '';
 }
 
-/**
- * Universal date parser that extracts local year, month, date safely without timezone/NaN bugs.
- */
 export function parseDiaryDate(val) {
   if (!val) return null;
   if (val instanceof Date) return val;
@@ -62,10 +55,6 @@ export function parseDiaryDate(val) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * Format date string into cute conversational text:
- * e.g., "today • sat, aug 15", "yesterday • fri, aug 14", "sat, aug 15, 2026"
- */
 export function formatDiaryDate(dateString) {
   const targetDate = parseDiaryDate(dateString);
   if (!targetDate) return '';

@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { generateEntrySummary } from '../api/groq';
 
-// Fetches the AI journal-insight summary for a saved entry, lazily — only
-// on first open, and only for entries that already have an id.
 export function useEntryInsight(entryId) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(null);

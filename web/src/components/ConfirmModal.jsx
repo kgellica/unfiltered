@@ -6,8 +6,8 @@ export default function ConfirmModal({
   message = 'this action cannot be undone.',
   confirmText = 'confirm',
   cancelText = 'cancel',
-  confirmVariant = 'danger', // 'danger' | 'accent' | 'default'
-  icon = 'trash', // 'trash' | 'logout' | 'alert'
+  confirmVariant = 'danger', 
+  icon = 'trash', 
   onConfirm,
   onCancel,
 }) {

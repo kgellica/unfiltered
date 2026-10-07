@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { analyzeMood } from '../lib/moodAnalyzer';
 
-// On-device mood suggestion — no network call. Waits for a typing pause,
-// scores the plain text locally, and offers a mood if it disagrees with
-// whatever is currently selected.
 export function useMoodSuggestion(plainContent, currentMood) {
   const [suggestedMood, setSuggestedMood] = useState(null);
   const debounceRef = useRef(null);
