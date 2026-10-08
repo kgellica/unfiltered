@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+// web/src/pages/Memories.jsx
+import { useState, useMemo } from 'react';
 import { useJournal } from '../hooks/useJournal';
 import EntryModal from '../components/EntryModal';
 import ProfileDropdown from '../components/ProfileDropdown';
 import FeaturedMemoryCard from '../components/memories/FeaturedMemoryCard';
 import MemoryCollectionSummary from '../components/memories/MemoryCollectionSummary';
+import MemoryFilterPills from '../components/memories/MemoryFilterPills';
 
 export default function Memories() {
   const {
@@ -18,11 +20,26 @@ export default function Memories() {
     handleDelete,
   } = useJournal();
 
-  // Find the oldest entry for flashback
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  // Filter entries based on the selected pill
+  const filteredEntries = useMemo(() => {
+    if (activeFilter === 'photos') {
+      return entries.filter(
+        (e) => e.photo_path && (Array.isArray(e.photo_path) ? e.photo_path.length > 0 : Boolean(e.photo_path))
+      );
+    }
+    if (activeFilter === 'voice') {
+      return entries.filter((e) => Boolean(e.voice_path));
+    }
+    return entries;
+  }, [entries, activeFilter]);
+
+  // Find the oldest entry among filtered items for flashback
   const flashbackEntry = useMemo(() => {
-    if (entries.length === 0) return null;
-    return entries[entries.length - 1];
-  }, [entries]);
+    if (filteredEntries.length === 0) return null;
+    return filteredEntries[filteredEntries.length - 1];
+  }, [filteredEntries]);
 
   return (
     <div
@@ -47,6 +64,12 @@ export default function Memories() {
           <ProfileDropdown />
         </div>
 
+        {/* Filter Pills */}
+        <MemoryFilterPills
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+        />
+
         {/* Featured Memory Card */}
         <FeaturedMemoryCard
           flashbackEntry={flashbackEntry}
@@ -55,7 +78,7 @@ export default function Memories() {
 
         {/* Bottom Collection Summary */}
         <MemoryCollectionSummary
-          entriesCount={entries.length}
+          entriesCount={filteredEntries.length}
           onOpenNew={openNew}
         />
       </div>

@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -5,7 +6,6 @@ import {
   BookOpen,
   CalendarDays,
   Images,
-  Quote,
   Settings,
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
@@ -15,7 +15,6 @@ const NAV_ITEMS = [
   { to: '/journal', label: 'journal', icon: BookOpen },
   { to: '/calendar', label: 'calendar', icon: CalendarDays },
   { to: '/memories', label: 'memories', icon: Images },
-  { to: '/affirmations', label: 'affirmations', icon: Quote },
   { to: '/settings', label: 'settings', icon: Settings },
 ];
 

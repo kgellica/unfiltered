@@ -1,16 +1,16 @@
 export const MONTH_DATA = [
-  { num: 0, name: 'january', short: 'JAN', color: '#40354a', days: 31 },
-  { num: 1, name: 'february', short: 'FEB', color: '#543b43', days: 28 },
-  { num: 2, name: 'march', short: 'MAR', color: '#3b4d40', days: 31 },
-  { num: 3, name: 'april', short: 'APR', color: '#3d445c', days: 30 },
-  { num: 4, name: 'may', short: 'MAY', color: '#4a463a', days: 31 },
-  { num: 5, name: 'june', short: 'JUN', color: '#543846', days: 30 },
-  { num: 6, name: 'july', short: 'JUL', color: '#364954', days: 31 },
-  { num: 7, name: 'august', short: 'AUG', color: '#544338', days: 31 },
-  { num: 8, name: 'september', short: 'SEP', color: '#4d3b32', days: 30 },
-  { num: 9, name: 'october', short: 'OCT', color: '#543f32', days: 31 },
-  { num: 10, name: 'november', short: 'NOV', color: '#3d3029', days: 30 },
-  { num: 11, name: 'december', short: 'DEC', color: '#2d3b34', days: 31 },
+  { num: 0, name: 'january', short: 'JAN', color: '#525266', days: 31 },
+  { num: 1, name: 'february', short: 'FEB', color: '#6A4A4B', days: 28 },
+  { num: 2, name: 'march', short: 'MAR', color: '#3E5D4C', days: 31 },
+  { num: 3, name: 'april', short: 'APR', color: '#B8B2E0', days: 30 },
+  { num: 4, name: 'may', short: 'MAY', color: '#E0E3D8', days: 31 },
+  { num: 5, name: 'june', short: 'JUN', color: '#D7DACF', days: 30 },
+  { num: 6, name: 'july', short: 'JUL', color: '#D8896A', days: 31 },
+  { num: 7, name: 'august', short: 'AUG', color: '#C99B28', days: 31 },
+  { num: 8, name: 'september', short: 'SEP', color: '#9E593A', days: 30 },
+  { num: 9, name: 'october', short: 'OCT', color: '#B5571C', days: 31 },
+  { num: 10, name: 'november', short: 'NOV', color: '#80381B', days: 30 },
+  { num: 11, name: 'december', short: 'DEC', color: '#3F4332', days: 31 },
 ];
 
 export const MONTH_ICONS = {

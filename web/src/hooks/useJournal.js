@@ -15,10 +15,12 @@ export function useJournal() {
         api.get('/entries/stats'),
         api.get('/entries'),
       ]);
-      setStreak(statsRes.data.current_streak || 0);
-      setEntries(entriesRes.data.entries || []);
+      setStreak(statsRes.data?.current_streak || 0);
+      setEntries(entriesRes.data?.entries || []);
+      return { success: true };
     } catch (err) {
       console.error('Failed to load journal data:', err);
+      return { success: false, error: err.message || 'failed to load entries' };
     } finally {
       setLoading(false);
     }
@@ -50,33 +52,60 @@ export function useJournal() {
     setShowModal(false);
   }, []);
 
-  const handleSave = useCallback(async (payload) => {
-    try {
-      if (payload.id) {
-        await api.put(`/entries/${payload.id}`, payload);
-      } else {
-        await api.post('/entries', payload);
-      }
-      if (payload._quickSave) {
-        fetchData();
-      } else {
-        closeModal();
-        fetchData();
-      }
-    } catch (err) {
-      console.error('Failed to save entry:', err);
-    }
-  }, [fetchData, closeModal]);
+  const handleSave = useCallback(
+    async (payload) => {
+      try {
+        let res;
+        if (payload.id) {
+          res = await api.put(`/entries/${payload.id}`, payload);
+        } else {
+          res = await api.post('/entries', payload);
+        }
 
-  const handleDelete = useCallback(async (id) => {
-    try {
-      await api.delete(`/entries/${id}`);
-      closeModal();
-      fetchData();
-    } catch (err) {
-      console.error('Failed to delete entry:', err);
-    }
-  }, [fetchData, closeModal]);
+        if (!payload._quickSave) {
+          closeModal();
+        }
+
+        await fetchData();
+
+        return {
+          success: true,
+          message: res?.data?.message || 'entry saved successfully!',
+          data: res?.data,
+        };
+      } catch (err) {
+        console.error('Failed to save entry:', err);
+        return {
+          success: false,
+          error: err.message || 'failed to save entry.',
+          errors: err.errors || null,
+        };
+      }
+    },
+    [fetchData, closeModal]
+  );
+
+  const handleDelete = useCallback(
+    async (id) => {
+      try {
+        const res = await api.delete(`/entries/${id}`);
+        closeModal();
+        await fetchData();
+
+        return {
+          success: true,
+          message: res?.data?.message || 'entry deleted successfully!',
+        };
+      } catch (err) {
+        console.error('Failed to delete entry:', err);
+        return {
+          success: false,
+          error: err.message || 'failed to delete entry.',
+        };
+      }
+    },
+    [fetchData, closeModal]
+  );
 
   return {
     entries,

@@ -71,7 +71,7 @@ export default function FeaturedMemoryCard({ flashbackEntry, onOpenEntry }) {
         className="text-[14px] font-medium leading-relaxed"
         style={{ color: softInk }}
       >
-        {plainText || 'no content written yet...'}
+        {plainText || ''}
       </p>
 
       {/* Attachments Preview Row (Photos & Voice) */}
@@ -120,7 +120,7 @@ export default function FeaturedMemoryCard({ flashbackEntry, onOpenEntry }) {
                       color: hasCustomBg ? ink : 'var(--accent)',
                     }}
                   >
-                    #{tagName}
+                    {tagName}
                   </span>
                 );
               })}

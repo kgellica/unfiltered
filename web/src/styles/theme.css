@@ -1,10 +1,9 @@
-/* ---------- Theme modes (Warm Brown, Cute Pink, Cream & White) ---------- */
 :root,
 [data-mode="light"] {
   /* Warm Milk Tea & Cream Cafe Aesthetic */
   --bg-page: #faf5ee;
-  --bg-sidebar: #382820;
-  --bg-sidebar-hover: #48352b;
+  --bg-sidebar: #e1d5c4;
+  --bg-sidebar-hover: #ebdcd0;
   --surface: #ffffff;
   --surface-hover: #fcf9f5;
   --surface-muted: #f4ede4;
@@ -14,8 +13,8 @@
   --ink: #32241e;
   --ink-soft: #7a6356;
   --ink-faint: #ad9a8e;
-  --sidebar-ink: #fdf7f2;
-  --sidebar-ink-soft: #cbb7aa;
+  --sidebar-ink: #32241e; 
+  --sidebar-ink-soft: #7a6356;
   
   --accent: #f472b6;
   --accent-hover: #ec4899;
@@ -29,7 +28,7 @@
 [data-mode="dim"] {
   /* Cozy Night Cocoa */
   --bg-page: #231c19;
-  --bg-sidebar: #191412;
+  --bg-sidebar: #1d1715; /* Dim charcoal/cocoa */
   --bg-sidebar-hover: #261f1c;
   --surface: #2d2420;
   --surface-hover: #382e29;
@@ -55,7 +54,7 @@
 [data-mode="dark"] {
   /* Midnight Espresso */
   --bg-page: #130f0e;
-  --bg-sidebar: #0a0807;
+  --bg-sidebar: #0f0c0b; /* Deep obsidian/dark espresso */
   --bg-sidebar-hover: #191412;
   --surface: #1d1715;
   --surface-hover: #261f1c;

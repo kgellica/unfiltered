@@ -7,8 +7,8 @@ export default function CuteBookIcon({ monthNum, selected }) {
 
   const getIconColor = () => {
     if (selected) return '#ffffff';
-    if (mode === 'light') return '#8B7355';
-    return 'rgba(255,255,255,0.7)';
+    if (mode === 'light') return '#ffffff';
+    return '#ffffff';
   };
 
   const getBgColor = () => {

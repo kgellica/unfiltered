@@ -125,12 +125,21 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
   const handleSave = () => {
     const rawContent = bodyRef.current?.innerHTML || '';
     const textOnly = bodyRef.current?.innerText?.trim() || '';
-    if (!textOnly && !title.trim() && photoUris.length === 0) return;
+    const cleanTitle = title.trim();
+
+    // Block saving ONLY if every single field is completely empty
+    const isEmpty =
+      !cleanTitle &&
+      !textOnly &&
+      photoUris.length === 0 &&
+      !voice.voiceUri;
+
+    if (isEmpty) return;
 
     onSave({
       ...entry,
-      title: title.trim() || null,
-      content: rawContent,
+      title: cleanTitle || null,
+      content: rawContent || '',
       entry_date: date,
       mood,
       bg_color: color || '#FFFFFF',
@@ -205,7 +214,7 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
             <div className="flex flex-wrap gap-1.5 mb-4">
               {tagList.map((t) => (
                 <span key={t} className="text-[11.5px] font-semibold px-2.5 py-1 rounded-xl" style={{ background: 'rgba(0,0,0,0.06)', color: ink }}>
-                  #{t}
+                  {t}
                 </span>
               ))}
             </div>
@@ -238,10 +247,10 @@ export default function EntryModal({ entry, onClose, onSave, onDelete, allExisti
             <div className="flex items-center gap-2 mt-3 px-3.5 py-2.5 rounded-2xl animate-cute-pop" style={{ background: 'var(--accent-soft, rgba(108,140,255,0.12))' }}>
               <Sparkles size={14} style={{ color: 'var(--accent)' }} strokeWidth={2.4} />
               <span className="text-[12.5px] font-medium flex-1 lowercase" style={{ color: ink }}>
-                sounds like you're feeling {MOOD_META[suggestedMood].label}. use it?
+                sounds like you're feeling <strong className="font-bold">{MOOD_META[suggestedMood].label}</strong>.
               </span>
               <button type="button" onClick={acceptSuggestedMood} className="text-[12px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}>
-                use
+                use it as mood
               </button>
               <button type="button" onClick={dismissSuggestedMood} className="p-1 rounded-full hover:bg-black/5" aria-label="dismiss mood suggestion">
                 <X size={13} style={{ color: ink, opacity: 0.6 }} />

@@ -14,16 +14,16 @@ class UpdateEntryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'      => 'nullable|string|max:255',
-            'content'    => 'required|string',
-            'mood'       => 'required|in:great,good,okay,low,sad',
-            'bg_color'   => 'nullable|string|max:7',
-            'entry_date' => 'required|date',
+            'title'        => 'nullable|string|max:255',
+            'content'      => 'nullable|string',
+            'mood'         => 'required|in:great,good,okay,low,sad',
+            'bg_color'     => 'nullable|string|max:7',
+            'entry_date'   => 'required|date',
             'photo_path'   => 'nullable|array|max:5',
             'photo_path.*' => 'string',
             'voice_path'   => 'nullable|string',
-            'tags'       => 'nullable|array',
-            'tags.*'     => 'string|max:50',
+            'tags'         => 'nullable|array',
+            'tags.*'       => 'string|max:50',
         ];
     }
 }

@@ -64,7 +64,7 @@ export default function EntryCard({ entry, onOpen }) {
         className="text-[13.5px] leading-relaxed line-clamp-3 font-medium flex-1"
         style={{ color: softInk }}
       >
-        {plainText || 'no content written yet...'}
+        {plainText || ''}
       </p>
 
       {/* Attachments Preview Row (Photos & Voice) */}
@@ -117,7 +117,7 @@ export default function EntryCard({ entry, onOpen }) {
                     color: hasCustomBg ? ink : 'var(--accent)',
                   }}
                 >
-                  #{tagName}
+                  {tagName}
                 </span>
               );
             })

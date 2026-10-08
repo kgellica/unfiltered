@@ -1,3 +1,4 @@
+// src/pages/Home.jsx
 import { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useJournal } from '../hooks/useJournal';
@@ -7,6 +8,7 @@ import ProfileDropdown from '../components/ProfileDropdown';
 import BookshelfView from '../components/home/BookshelfView';
 import SidebarShelf from '../components/home/SidebarShelf';
 import MonthEntriesView from '../components/home/MonthEntriesView';
+import AffirmationsSection from '../components/affirmations/AffirmationsSection';
 import { parseDiaryDate } from '../lib/color';
 import { MONTH_DATA } from '../constants/calendar';
 
@@ -76,20 +78,23 @@ export default function Home() {
       style={{ background: 'var(--bg-page)' }}
     >
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
-        {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <AnimatedGreeting userName={user?.name} />
           <ProfileDropdown />
         </div>
 
         {selectedMonth === null ? (
-          <BookshelfView
-            selectedYear={selectedYear}
-            setSelectedYear={setSelectedYear}
-            availableYears={availableYears}
-            monthlyStats={monthlyStats}
-            onSelectMonth={setSelectedMonth}
-          />
+          <>
+            <BookshelfView
+              selectedYear={selectedYear}
+              setSelectedYear={setSelectedYear}
+              availableYears={availableYears}
+              monthlyStats={monthlyStats}
+              onSelectMonth={setSelectedMonth}
+            />
+
+            <AffirmationsSection />
+          </>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-cute-fade lg:h-[calc(100vh-10rem)]">
             <SidebarShelf
